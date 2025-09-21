@@ -13,7 +13,6 @@ using Microsoft.OpenApi.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
@@ -51,16 +50,27 @@ var jwtKey = Environment.GetEnvironmentVariable("JWT__KEY") ?? jwtSettings.Key;
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
 const string FrontCors = "FrontCors";
-var allowed = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+
+var allowed = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? Array.Empty<string>();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(FrontCors, policy =>
     {
         if (allowed.Length > 0)
-            policy.WithOrigins(allowed).AllowAnyHeader().AllowAnyMethod();
+        {
+            policy.WithOrigins(allowed)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
         else
-            policy.AllowAnyHeader().AllowAnyMethod();
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        }
     });
 });
 
@@ -120,7 +130,6 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<ListeDeCourses.Api.Validators.UtilisateurCreateDtoValidator>();
 
-
 var app = builder.Build();
 
 app.UseGlobalErrorHandler();
@@ -135,6 +144,10 @@ app.UseHttpsRedirection();
 app.UseCors(FrontCors);
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.MapGet("/healthz", () => Results.Ok(new { ok = true }))
+   .AllowAnonymous();
+
 app.MapControllers();
 
 app.Run();
