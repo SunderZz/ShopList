@@ -11,6 +11,7 @@ using Microsoft.Extensions.Options;
 namespace ListeDeCourses.Api.Controllers
 {
     [ApiController]
+    [Route("[controller]")]
     [Route("api/[controller]")]
     [Produces("application/json")]
     public class AuthController : ControllerBase
