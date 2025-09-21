@@ -12,6 +12,7 @@ using ListeDeCourses.Api.Settings;
 using Microsoft.OpenApi.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using MongoDB.Bson;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -145,8 +146,15 @@ app.UseCors(FrontCors);
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/healthz", () => Results.Ok(new { ok = true }))
-   .AllowAnonymous();
+app.MapGet("/healthz/db", async (IMongoDatabase db, CancellationToken ct) =>
+{
+    var result = await db.RunCommandAsync<BsonDocument>(new BsonDocument("ping", 1), cancellationToken: ct);
+    return Results.Ok(new
+    {
+        ok = true,
+        ping = result.ToString()
+    });
+}).AllowAnonymous();
 
 app.MapControllers();
 
