@@ -18,11 +18,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 
-builder.Services.AddSingleton<IMongoClient>(_ =>
-    new MongoClient(builder.Configuration.GetConnectionString("MongoDb") ?? "mongodb://localhost:27017"));
-builder.Services.AddSingleton(sp =>
-    sp.GetRequiredService<IMongoClient>().GetDatabase(
-        builder.Configuration.GetValue<string>("MongoDbDatabase") ?? "liste-de-courses"));
+var mongoUri = Environment.GetEnvironmentVariable("MONGODB_URI")
+               ?? builder.Configuration.GetConnectionString("MongoDb")
+               ?? "mongodb://localhost:27017";
+
+var mongoDbName = builder.Configuration.GetValue<string>("MongoDbDatabase") ?? "liste-de-courses";
+
+builder.Services.AddSingleton<IMongoClient>(_ => new MongoClient(mongoUri));
+builder.Services.AddSingleton(sp => sp.GetRequiredService<IMongoClient>().GetDatabase(mongoDbName));
 
 builder.Services
     .AddScoped<UtilisateurRepository>()
@@ -44,28 +47,20 @@ builder.Services.AddOptions<JwtSettings>()
     .ValidateOnStart();
 
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
-var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key));
+var jwtKey = Environment.GetEnvironmentVariable("JWT__KEY") ?? jwtSettings.Key;
+var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
 const string FrontCors = "FrontCors";
-
 var allowed = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(FrontCors, policy =>
-    {
-        if (allowed.Length > 0) policy.WithOrigins(allowed).AllowAnyHeader().AllowAnyMethod();
-        else policy.AllowAnyHeader().AllowAnyMethod(); // fallback dev
-    });
-});
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(FrontCors, policy =>
     {
-        policy
-            .WithOrigins("http://localhost:5173", "http://192.168.1.12:5173")
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+        if (allowed.Length > 0)
+            policy.WithOrigins(allowed).AllowAnyHeader().AllowAnyMethod();
+        else
+            policy.AllowAnyHeader().AllowAnyMethod();
     });
 });
 

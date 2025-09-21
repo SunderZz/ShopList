@@ -1,0 +1,10 @@
+bin/
+obj/
+out/
+*.user
+*.suo
+*.swp
+*.tmp
+.vscode/
+.idea/
+.env
