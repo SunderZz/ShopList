@@ -6,22 +6,48 @@ using Microsoft.AspNetCore.Mvc;
 namespace ListeDeCourses.Api.Controllers;
 
 [ApiController]
-[Route("api/utilisateurs")]
 [Route("utilisateurs")]
-[Authorize(Roles = "superuser")]
-public class UtilisateursController
-  : BaseController<UtilisateurReadDto, UtilisateurCreateDto, UtilisateurUpdateDto>
+[Route("api/utilisateurs")]
+public class UtilisateursController : ControllerBase
 {
-    public UtilisateursController(UtilisateurService service) : base(service) { }
+    private readonly UtilisateurService _service;
 
-    protected override string GetId(UtilisateurReadDto dto) => dto.Id;
+    public UtilisateursController(UtilisateurService service) => _service = service;
 
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetAll(CancellationToken ct) =>
+        Ok(await _service.GetAllAsync(ct));
 
-    [HttpPost("register")]
+    [HttpGet("{id}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetById(string id, CancellationToken ct)
+    {
+        var item = await _service.GetByIdAsync(id, ct);
+        return item is null ? NotFound() : Ok(item);
+    }
+
+    [HttpPost]
     [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] UtilisateurCreateDto dto, CancellationToken ct)
     {
-        var created = await Service.CreateAsync(dto, ct);
-        return CreatedAtAction(nameof(GetById), new { id = GetId(created) }, created);
+        var created = await _service.CreateAsync(dto, ct);
+        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Roles = "superuser")]
+    public async Task<IActionResult> Update(string id, [FromBody] UtilisateurUpdateDto dto, CancellationToken ct)
+    {
+        var updated = await _service.UpdateAsync(id, dto, ct);
+        return updated is null ? NotFound() : Ok(updated);
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Roles = "superuser")]
+    public async Task<IActionResult> Delete(string id, CancellationToken ct)
+    {
+        var ok = await _service.DeleteAsync(id, ct);
+        return ok ? NoContent() : NotFound();
     }
 }
