@@ -6,7 +6,7 @@ import { endpoints } from '@/api/endpoints'
 export const api = axios.create({
   baseURL: import.meta.env.DEV
     ? '/api'
-    : import.meta.env.VITE_API_BASE_URL ?? 'https://localhost:7145/api',
+    : import.meta.env.VITE_API_BASE_URL ?? 'https://shoplist-33qz.onrender.com/',
   withCredentials: false,
 })
 
