@@ -1,0 +1,36 @@
+# Binaires et builds
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+
+# Fichiers utilisateurs spécifiques à la machine
+*.csproj.user
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# VS et Rider
+.vs/
+.idea/
+
+# Logs
+*.log
+
+# Certificats/dev certs
+*.pem
+*.crt
+*.key
+
+# Système
+Thumbs.db
+.DS_Store
+
+# Fichiers spécifiques à ignorer
+MongoDbService.cs  # seulement si inutilisé
+
+# Configuration sensible
+appsettings.Development.json
+appsettings.Production.json

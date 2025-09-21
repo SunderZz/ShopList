@@ -1,0 +1,53 @@
+# Node
+node_modules/
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build outputs
+dist/
+dist-ssr/
+build/
+storybook-static/
+
+# Vite
+.vite/
+
+# Caches
+.cache/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Tests / coverage
+coverage/
+test-results/
+playwright-report/
+cypress/videos/
+cypress/screenshots/
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# OS / Editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.history/
+*.swp
+*.swo
+
+# Misc
+.sass-cache/
+.node_repl_history
+.npm/
+.parcel-cache/
