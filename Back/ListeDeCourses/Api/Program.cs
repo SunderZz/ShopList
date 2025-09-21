@@ -4,6 +4,7 @@ using ListeDeCourses.Api.Extensions;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using MongoDB.Driver;
+using MongoDB.Bson;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -11,20 +12,37 @@ using ListeDeCourses.Api.Settings;
 using Microsoft.OpenApi.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
 JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 
+// ------------------------
+// MongoDB configuration
+// ------------------------
 var mongoUri = Environment.GetEnvironmentVariable("MONGODB_URI")
                ?? builder.Configuration.GetConnectionString("MongoDb")
                ?? "mongodb://localhost:27017";
 
-var mongoDbName = builder.Configuration.GetValue<string>("MongoDbDatabase") ?? "liste-de-courses";
+var mongoUrl = new MongoUrl(mongoUri);
 
-builder.Services.AddSingleton<IMongoClient>(_ => new MongoClient(mongoUri));
+// Si l'URI ne précise pas la DB, on lit la config, sinon défaut = "ShopList"
+var configuredDbName = builder.Configuration.GetValue<string>("MongoDbDatabase");
+var mongoDbName = !string.IsNullOrWhiteSpace(mongoUrl.DatabaseName)
+    ? mongoUrl.DatabaseName
+    : (string.IsNullOrWhiteSpace(configuredDbName) ? "ShopList" : configuredDbName);
+
+// Paramètres client (fail-fast sur la sélection du serveur)
+var mongoSettings = MongoClientSettings.FromUrl(mongoUrl);
+mongoSettings.ServerSelectionTimeout = TimeSpan.FromSeconds(5);
+
+builder.Services.AddSingleton<IMongoClient>(_ => new MongoClient(mongoSettings));
 builder.Services.AddSingleton(sp => sp.GetRequiredService<IMongoClient>().GetDatabase(mongoDbName));
 
+// ------------------------
+// DI Repos & Services
+// ------------------------
 builder.Services
     .AddScoped<UtilisateurRepository>()
     .AddScoped<IngredientRepository>()
@@ -39,13 +57,16 @@ builder.Services
 
 builder.Services.AddHttpContextAccessor();
 
+// ------------------------
+// JWT / AuthN / AuthZ
+// ------------------------
 builder.Services.AddOptions<JwtSettings>()
     .Bind(builder.Configuration.GetSection("Jwt"))
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
-var jwtKey = Environment.GetEnvironmentVariable("JWT__KEY") ?? jwtSettings.Key;
+var jwtKey = Environment.GetEnvironmentVariable("JWT__KEY") ?? jwtSettings.Key ?? "dev-only-key-change-me";
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
 const string FrontCors = "FrontCors";
@@ -87,8 +108,12 @@ builder.Services
         };
     });
 
+// Aucune fallback policy : rien n'est protégé par défaut
 builder.Services.AddAuthorization();
 
+// ------------------------
+// MVC / Swagger / Validation
+// ------------------------
 builder.Services.AddControllers()
     .AddJsonOptions(o =>
     {
@@ -131,5 +156,35 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// ------------------------
+// Health endpoints
+// ------------------------
+app.MapGet("/healthz", () => Results.Ok(new { ok = true })).AllowAnonymous();
+
+app.MapGet("/healthz/db", async (IMongoDatabase db, ILoggerFactory lf, CancellationToken ct) =>
+{
+    var logger = lf.CreateLogger("HealthzDb");
+    try
+    {
+        var result = await db.RunCommandAsync<BsonDocument>(new BsonDocument("ping", 1), cancellationToken: ct);
+        return Results.Ok(new { ok = true, database = db.DatabaseNamespace.DatabaseName, ping = result.ToString() });
+    }
+    catch (MongoAuthenticationException mae)
+    {
+        logger.LogError(mae, "Mongo authentication failed");
+        return Results.Problem(title: "Mongo authentication failed", statusCode: 500);
+    }
+    catch (TimeoutException te)
+    {
+        logger.LogError(te, "Mongo timeout (Network Access / IP allowlist ?)");
+        return Results.Problem(title: "Mongo timeout (Network Access / IP allowlist ?)", statusCode: 504);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Mongo unexpected error");
+        return Results.Problem(title: "Mongo unexpected error", statusCode: 500);
+    }
+}).AllowAnonymous();
 
 app.Run();
