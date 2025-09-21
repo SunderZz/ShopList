@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ListeDeCourses.Api.Controllers;
 
+[ApiController]
+[Route("api/utilisateurs")]
+[Route("utilisateurs")]
 [Authorize(Roles = "superuser")]
 public class UtilisateursController
   : BaseController<UtilisateurReadDto, UtilisateurCreateDto, UtilisateurUpdateDto>
