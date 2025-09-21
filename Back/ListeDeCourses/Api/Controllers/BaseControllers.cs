@@ -4,6 +4,7 @@ using ListeDeCourses.Api.Services;
 namespace ListeDeCourses.Api.Controllers;
 
 [ApiController]
+[Route("[controller]")]
 [Route("api/[controller]")]
 public abstract class BaseController<TReadDto, TCreateDto, TUpdateDto> : ControllerBase
 {
