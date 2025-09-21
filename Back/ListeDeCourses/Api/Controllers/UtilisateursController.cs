@@ -5,9 +5,9 @@ using Microsoft.AspNetCore.Authorization;
 namespace ListeDeCourses.Api.Controllers;
 
 [Authorize(Roles = "superuser")]
-public class UtilisateursController : BaseController<UtilisateurReadDto, UtilisateurCreateDto, UtilisateurUpdateDto>
+public class UtilisateursController
+  : BaseController<UtilisateurReadDto, UtilisateurCreateDto, UtilisateurUpdateDto>
 {
     public UtilisateursController(UtilisateurService service) : base(service) { }
-
     protected override string GetId(UtilisateurReadDto dto) => dto.Id;
 }

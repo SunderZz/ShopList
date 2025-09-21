@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ListeDeCourses.Api.Services;
 
@@ -8,14 +9,15 @@ namespace ListeDeCourses.Api.Controllers;
 public abstract class BaseController<TReadDto, TCreateDto, TUpdateDto> : ControllerBase
 {
     private readonly IBaseService<TReadDto, TCreateDto, TUpdateDto> _service;
-
     protected BaseController(IBaseService<TReadDto, TCreateDto, TUpdateDto> service) => _service = service;
 
     [HttpGet]
+    [AllowAnonymous]
     public async Task<IActionResult> GetAll(CancellationToken ct) =>
         Ok(await _service.GetAllAsync(ct));
 
     [HttpGet("{id}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetById(string id, CancellationToken ct)
     {
         var item = await _service.GetByIdAsync(id, ct);
@@ -23,6 +25,7 @@ public abstract class BaseController<TReadDto, TCreateDto, TUpdateDto> : Control
     }
 
     [HttpPost]
+    [Authorize]
     public async Task<IActionResult> Create([FromBody] TCreateDto dto, CancellationToken ct)
     {
         var created = await _service.CreateAsync(dto, ct);
@@ -30,6 +33,7 @@ public abstract class BaseController<TReadDto, TCreateDto, TUpdateDto> : Control
     }
 
     [HttpPut("{id}")]
+    [Authorize]
     public async Task<IActionResult> Update(string id, [FromBody] TUpdateDto dto, CancellationToken ct)
     {
         var updated = await _service.UpdateAsync(id, dto, ct);
@@ -37,6 +41,7 @@ public abstract class BaseController<TReadDto, TCreateDto, TUpdateDto> : Control
     }
 
     [HttpDelete("{id}")]
+    [Authorize]
     public async Task<IActionResult> Delete(string id, CancellationToken ct)
     {
         var ok = await _service.DeleteAsync(id, ct);
