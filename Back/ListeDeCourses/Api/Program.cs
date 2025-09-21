@@ -6,13 +6,11 @@ using FluentValidation.AspNetCore;
 using MongoDB.Driver;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using ListeDeCourses.Api.Settings;
 using Microsoft.OpenApi.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
-using MongoDB.Bson;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,27 +49,16 @@ var jwtKey = Environment.GetEnvironmentVariable("JWT__KEY") ?? jwtSettings.Key;
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
 const string FrontCors = "FrontCors";
-
-var allowed = builder.Configuration
-    .GetSection("Cors:AllowedOrigins")
-    .Get<string[]>() ?? Array.Empty<string>();
+var allowed = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(FrontCors, policy =>
     {
         if (allowed.Length > 0)
-        {
-            policy.WithOrigins(allowed)
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        }
+            policy.WithOrigins(allowed).AllowAnyHeader().AllowAnyMethod();
         else
-        {
-            policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        }
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
     });
 });
 
@@ -100,10 +87,7 @@ builder.Services
         };
     });
 
-builder.Services.AddAuthorizationBuilder()
-    .SetFallbackPolicy(new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .Build());
+builder.Services.AddAuthorization();
 
 builder.Services.AddControllers()
     .AddJsonOptions(o =>
@@ -145,16 +129,6 @@ app.UseHttpsRedirection();
 app.UseCors(FrontCors);
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.MapGet("/healthz/db", async (IMongoDatabase db, CancellationToken ct) =>
-{
-    var result = await db.RunCommandAsync<BsonDocument>(new BsonDocument("ping", 1), cancellationToken: ct);
-    return Results.Ok(new
-    {
-        ok = true,
-        ping = result.ToString()
-    });
-}).AllowAnonymous();
 
 app.MapControllers();
 
