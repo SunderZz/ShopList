@@ -5,7 +5,6 @@ using ListeDeCourses.Api.DTOs;
 using ListeDeCourses.Api.Mappings;
 using ListeDeCourses.Api.Models;
 using ListeDeCourses.Api.Repositories;
-using Microsoft.AspNetCore.Http;
 
 namespace ListeDeCourses.Api.Services;
 
