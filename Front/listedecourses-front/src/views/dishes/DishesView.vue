@@ -14,7 +14,7 @@ import type { Dish, Ingredient } from '@/api/types'
 const dishes = useDishesStore()
 const ingredients = useIngredientsStore()
 
-const UNIT_OPTIONS = ['g', 'kg', 'paquet']
+const UNIT_OPTIONS = ['g', 'kg', 'paquet','unité']
 
 const createName = ref<string>('')
 type QtyUnit = { quantity: number | null; unit: string | null }

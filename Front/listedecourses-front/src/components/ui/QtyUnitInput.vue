@@ -12,7 +12,7 @@ const props = withDefaults(defineProps<{
   placeholderQty?: string
 }>(), {
   modelValue: () => ({ quantity: null, unit: null }),
-  units: () => ['g', 'kg', 'paquet'],
+  units: () => ['g', 'kg', 'paquet','unité'],
   inputClass: 'w-full h-10 rounded-lg border px-2 text-sm',
   selectClass: 'w-full h-10 rounded-lg border px-2 text-sm',
   disabled: false,

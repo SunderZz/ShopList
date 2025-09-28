@@ -30,7 +30,7 @@ const dishSearch = ref('')
 const ingSearch = ref('')
 type QtyUnit = { quantity: number | null; unit: string | null }
 
-const UNIT_OPTIONS = ['kg', 'g', 'paquet']
+const UNIT_OPTIONS = ['kg', 'g', 'paquet', 'unité']
 
 const pickerErrors = ref<Record<string, string>>({})
 const globalPickerError = ref<string | null>(null)

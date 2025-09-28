@@ -129,7 +129,7 @@ const selectedDishIds = ref<string[]>([])
 const selectedIngredientIds = ref<string[]>([])
 type IngMeta = { quantity: number | null; unit: string | null }
 const selectedIngredientMetaById = ref<Record<string, IngMeta>>({})
-const UNIT_OPTIONS = ['kg', 'g', 'paquet']
+const UNIT_OPTIONS = ['kg', 'g', 'paquet','unité']
 
 const pickerErrors = ref<Record<string, string>>({})
 const globalPickerError = ref<string | null>(null)

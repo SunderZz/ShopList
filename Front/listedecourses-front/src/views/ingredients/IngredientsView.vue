@@ -142,7 +142,7 @@ function cancelDelete() {
               >
                 <span class="inline-flex items-center gap-2 justify-center w-full">
                   <svg
-                    xmlns="http://www.w3.org/2000/svg"
+                    xmlns="https://www.w3.org/2000/svg"
                     class="h-4 w-4"
                     viewBox="0 0 20 20"
                     fill="currentColor"
