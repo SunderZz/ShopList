@@ -5,7 +5,7 @@ namespace ListeDeCourses.Api.Validators;
 internal static class ValidationHelpers
 {
     private static readonly HashSet<string> AllowedUnits =
-        new(StringComparer.OrdinalIgnoreCase) { "g", "kg", "paquet" };
+        new(StringComparer.OrdinalIgnoreCase) { "g", "kg", "paquet","unité" };
 
     public static bool BeAllowedUnit(string? unit)
         => unit is null || unit.Trim().Length == 0 || AllowedUnits.Contains(unit.Trim());
