@@ -129,7 +129,7 @@ const selectedDishIds = ref<string[]>([])
 const selectedIngredientIds = ref<string[]>([])
 type IngMeta = { quantity: number | null; unit: string | null }
 const selectedIngredientMetaById = ref<Record<string, IngMeta>>({})
-const UNIT_OPTIONS = ['kg', 'g', 'paquet', 'unité']
+const UNIT_OPTIONS = ['kg', 'g', 'paquet','unité']
 
 const pickerErrors = ref<Record<string, string>>({})
 const globalPickerError = ref<string | null>(null)
@@ -164,6 +164,16 @@ watch(selectedIngredientIds, (ids) => {
     if (!set.has(k)) delete pickerErrors.value[k]
   }
 })
+
+function dishIngredientIdSet(dishIds: string[]): Set<string> {
+  const set = new Set<string>()
+  for (const dId of dishIds) {
+    const d = dishes.items.find((x: { id: string }) => x.id === dId)
+    if (!d) continue
+    for (const di of d.ingredients) set.add(di.ingredientId)
+  }
+  return set
+}
 
 function openPicker() {
   if (locked.value) return
@@ -226,38 +236,20 @@ async function confirmPicker() {
   showPicker.value = false
 }
 
-function computeManualItemsFromView(list: ShoppingList): ShoppingListItem[] {
-  const agg = aggregateFromDishIds(list.dishIds)
-
-  return itemsView.value
-    .filter((it) => {
-      const a = agg[it.ingredientId]
-      if (!a) return true
-      const sameUnit = (a.unit?.toLowerCase() ?? null) === (it.unit?.toLowerCase() ?? null)
-      const sameQty = (a.qty ?? null) === (it.quantity ?? null)
-      return !(sameUnit && sameQty)
-    })
-    .map((it) => ({
-      ingredientId: it.ingredientId,
-      ingredientName: it.ingredientName,
-      aisle: it.aisle ?? null,
-      quantity: it.quantity ?? null,
-      unit: it.unit ?? null,
-      checked: !!it.checked,
-    }))
-}
-
 async function onCheckChange(r: ShoppingListItem, e: Event) {
+  const isChecked = (e.target as HTMLInputElement).checked
+  r.checked = !!isChecked
   const l = current.value
   if (!l) return
-  r.checked = (e.target as HTMLInputElement).checked
-
-  const manualItems = computeManualItemsFromView(l)
-
-  await lists.updateOne(l.id, {
-    dishIds: l.dishIds,
-    items: manualItems,
-  })
+  const payloadItems: ShoppingListItem[] = itemsView.value.map((it) => ({
+    ingredientId: it.ingredientId,
+    ingredientName: it.ingredientName,
+    quantity: it.quantity ?? null,
+    unit: it.unit ?? null,
+    aisle: it.aisle ?? null,
+    checked: !!it.checked,
+  }))
+  await lists.updateOne(l.id, { items: payloadItems, dishIds: l.dishIds })
 }
 
 const showConfirmDelete = ref(false)
