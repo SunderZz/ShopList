@@ -8,7 +8,9 @@ using ListeDeCourses.Api.Repositories;
 
 namespace ListeDeCourses.Api.Services;
 
-public class ListeService : BaseService<ListeReadDto, ListeCreateDto, ListeUpdateDto, Liste>
+public class ListeService
+    : BaseService<ListeReadDto, ListeCreateDto, ListeUpdateDto, Liste>,
+      IItemCheckService<ListeReadDto> 
 {
     private readonly PlatRepository _plats;
     private readonly IngredientRepository _ingredients;
@@ -131,6 +133,21 @@ public class ListeService : BaseService<ListeReadDto, ListeCreateDto, ListeUpdat
             l.Items.RemoveAll(i => i.IngredientId == ingredientId);
             await _repository.UpdateAsync(l.Id, l, ct);
         }
+    }
+    public async Task<ListeReadDto?> SetItemCheckedAsync(string listId, string ingredientId, bool isChecked, CancellationToken ct = default)
+    {
+        var existing = await _repository.GetByIdAsync(listId, ct);
+        if (existing is null) return null;
+
+        EnsureOwnership(existing);
+
+        var item = existing.Items.FirstOrDefault(i => i.IngredientId == ingredientId);
+        if (item is null) return null;
+
+        item.Checked = isChecked;
+
+        await _repository.UpdateAsync(listId, existing, ct);
+        return existing.ToReadDto();
     }
 
     private async Task MaterializeAsync(

@@ -44,5 +44,20 @@ public abstract class BaseController<TReadDto, TCreateDto, TUpdateDto> : Control
         return ok ? NoContent() : NotFound();
     }
 
+    [HttpPatch("{id}/items/{ingredientId}/checked")]
+    public async Task<IActionResult> PatchItemChecked(
+        string id,
+        string ingredientId,
+        [FromBody] ListeCheckedToggleDto body,
+        CancellationToken ct)
+    {
+        if (_service is IItemCheckService<TReadDto> checkSvc)
+        {
+            var updated = await checkSvc.SetItemCheckedAsync(id, ingredientId, body.Checked, ct);
+            return updated is null ? NotFound() : Ok(updated);
+        }
+        return NotFound();
+    }
+
     protected abstract string GetId(TReadDto dto);
 }

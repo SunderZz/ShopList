@@ -39,11 +39,31 @@ export const useListsStore = defineStore('lists', () => {
     return data
   }
 
+  async function patchChecked(listId: string, ingredientId: string, checked: boolean) {
+    const { data } = await api.patch<ShoppingList>(
+      `${endpoints.lists}/${listId}/items/${ingredientId}/checked`,
+      { checked }
+    )
+    items.value = upsertById(items.value, data)
+    if (current.value?.id === listId) current.value = data
+    return data
+  }
+
   async function deleteOne(id: string) {
     await api.delete(`${endpoints.lists}/${id}`)
     items.value = removeById(items.value, id)
     if (current.value?.id === id) current.value = null
   }
 
-  return { items, current, loading, fetchAll, fetchById, createOne, updateOne, deleteOne }
+  return {
+    items,
+    current,
+    loading,
+    fetchAll,
+    fetchById,
+    createOne,
+    updateOne,
+    patchChecked,
+    deleteOne,
+  }
 })

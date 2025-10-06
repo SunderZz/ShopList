@@ -129,7 +129,7 @@ const selectedDishIds = ref<string[]>([])
 const selectedIngredientIds = ref<string[]>([])
 type IngMeta = { quantity: number | null; unit: string | null }
 const selectedIngredientMetaById = ref<Record<string, IngMeta>>({})
-const UNIT_OPTIONS = ['kg', 'g', 'paquet','unité']
+const UNIT_OPTIONS = ['kg', 'g', 'paquet', 'unité']
 
 const pickerErrors = ref<Record<string, string>>({})
 const globalPickerError = ref<string | null>(null)
@@ -225,7 +225,6 @@ async function confirmPicker() {
         aisle: ing?.aisle ?? null,
         quantity: meta.quantity,
         unit: meta.unit,
-        checked: false as boolean,
       } satisfies ShoppingListItem
     }),
   })
@@ -238,18 +237,9 @@ async function confirmPicker() {
 
 async function onCheckChange(r: ShoppingListItem, e: Event) {
   const isChecked = (e.target as HTMLInputElement).checked
-  r.checked = !!isChecked
-  const l = current.value
-  if (!l) return
-  const payloadItems: ShoppingListItem[] = itemsView.value.map((it) => ({
-    ingredientId: it.ingredientId,
-    ingredientName: it.ingredientName,
-    quantity: it.quantity ?? null,
-    unit: it.unit ?? null,
-    aisle: it.aisle ?? null,
-    checked: !!it.checked,
-  }))
-  await lists.updateOne(l.id, { items: payloadItems, dishIds: l.dishIds })
+  r.checked = isChecked
+  if (!current.value) return
+  await lists.patchChecked(current.value.id, r.ingredientId, isChecked)
 }
 
 const showConfirmDelete = ref(false)

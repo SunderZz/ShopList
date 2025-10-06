@@ -61,4 +61,9 @@ namespace ListeDeCourses.Api.DTOs
 
         public List<string>? DishIds { get; init; }
     }
+
+    public record ListeCheckedToggleDto
+    {
+        public required bool Checked { get; init; }
+    }
 }
