@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using ListeDeCourses.Api.Services;
+using ListeDeCourses.Api.DTOs;
 
 namespace ListeDeCourses.Api.Controllers;
 
