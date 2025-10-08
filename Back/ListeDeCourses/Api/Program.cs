@@ -13,36 +13,31 @@ using Microsoft.OpenApi.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.DataProtection;
+using System.IO;
 
 var builder = WebApplication.CreateBuilder(args);
 
 JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 
-// ------------------------
-// MongoDB configuration
-// ------------------------
 var mongoUri = Environment.GetEnvironmentVariable("MONGODB_URI")
                ?? builder.Configuration.GetConnectionString("MongoDb")
                ?? "mongodb://localhost:27017";
 
 var mongoUrl = new MongoUrl(mongoUri);
 
-// Si l'URI ne précise pas la DB, on lit la config, sinon défaut = "ShopList"
 var configuredDbName = builder.Configuration.GetValue<string>("MongoDbDatabase");
 var mongoDbName = !string.IsNullOrWhiteSpace(mongoUrl.DatabaseName)
     ? mongoUrl.DatabaseName
     : (string.IsNullOrWhiteSpace(configuredDbName) ? "ShopList" : configuredDbName);
 
-// Paramètres client (fail-fast sur la sélection du serveur)
 var mongoSettings = MongoClientSettings.FromUrl(mongoUrl);
 mongoSettings.ServerSelectionTimeout = TimeSpan.FromSeconds(5);
 
 builder.Services.AddSingleton<IMongoClient>(_ => new MongoClient(mongoSettings));
 builder.Services.AddSingleton(sp => sp.GetRequiredService<IMongoClient>().GetDatabase(mongoDbName));
 
-// ------------------------
-// DI Repos & Services
-// ------------------------
 builder.Services
     .AddScoped<UtilisateurRepository>()
     .AddScoped<IngredientRepository>()
@@ -57,9 +52,6 @@ builder.Services
 
 builder.Services.AddHttpContextAccessor();
 
-// ------------------------
-// JWT / AuthN / AuthZ
-// ------------------------
 builder.Services.AddOptions<JwtSettings>()
     .Bind(builder.Configuration.GetSection("Jwt"))
     .ValidateDataAnnotations()
@@ -93,27 +85,19 @@ builder.Services
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = signingKey,
-
             ValidateIssuer = true,
             ValidIssuer = jwtSettings.Issuer,
-
             ValidateAudience = true,
             ValidAudience = jwtSettings.Audience,
-
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero,
-
             NameClaimType = "sub",
             RoleClaimType = "role"
         };
     });
 
-// Aucune fallback policy : rien n'est protégé par défaut
 builder.Services.AddAuthorization();
 
-// ------------------------
-// MVC / Swagger / Validation
-// ------------------------
 builder.Services.AddControllers()
     .AddJsonOptions(o =>
     {
@@ -140,7 +124,16 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<ListeDeCourses.Api.Validators.UtilisateurCreateDtoValidator>();
 
+builder.Services
+    .AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo("/data/keys"));
+
 var app = builder.Build();
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
 app.UseGlobalErrorHandler();
 
@@ -149,17 +142,19 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    app.UseHsts();
+}
 
-app.UseHttpsRedirection();
 app.UseCors(FrontCors);
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-// ------------------------
-// Health endpoints
-// ------------------------
+app.MapGet("/", () => Results.Ok(new { ok = true })).AllowAnonymous();
+
 app.MapGet("/healthz", () => Results.Ok(new { ok = true })).AllowAnonymous();
 
 app.MapGet("/healthz/db", async (IMongoDatabase db, ILoggerFactory lf, CancellationToken ct) =>
