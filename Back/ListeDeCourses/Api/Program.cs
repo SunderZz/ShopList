@@ -124,10 +124,6 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<ListeDeCourses.Api.Validators.UtilisateurCreateDtoValidator>();
 
-builder.Services
-    .AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo("/data/keys"));
-
 var app = builder.Build();
 
 app.UseForwardedHeaders(new ForwardedHeadersOptions
