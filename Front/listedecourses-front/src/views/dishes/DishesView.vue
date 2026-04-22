@@ -49,7 +49,11 @@ function cancelCreatePicker() {
 }
 function toggleCreateSelect(id: string) {
   const set = new Set(selectedCreateIds.value)
-  set.has(id) ? set.delete(id) : set.add(id)
+  if (set.has(id)) {
+    set.delete(id)
+  } else {
+    set.add(id)
+  }
   selectedCreateIds.value = [...set]
   if (!createMetaById.value[id]) createMetaById.value[id] = { quantity: null, unit: null }
   if (!set.has(id)) delete createPickerErrors.value[id]
@@ -97,7 +101,7 @@ async function createDish() {
     ingredients: ingredientsPayload,
   })
 
-  let createdId: string | null = (created as any)?.id ?? null
+  let createdId: string | null = created.id
   if (!createdId && dishes.items.length > prevLen) {
     createdId = dishes.items[dishes.items.length - 1]?.id ?? null
   }

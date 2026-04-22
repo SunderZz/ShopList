@@ -46,7 +46,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (t) {
       localStorage.setItem(TOKEN_KEY, t)
       api.defaults.headers = api.defaults.headers ?? {}
-      ;(api.defaults.headers as any).Authorization = `Bearer ${t}`
+      api.defaults.headers.common.Authorization = `Bearer ${t}`
       scheduleAutoLogout(t)
 
       if (import.meta.env.DEV) {
@@ -57,7 +57,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
     } else {
       localStorage.removeItem(TOKEN_KEY)
-      if (api.defaults.headers) delete (api.defaults.headers as any).Authorization
+      delete api.defaults.headers.common.Authorization
       clearLogoutTimer()
     }
   }

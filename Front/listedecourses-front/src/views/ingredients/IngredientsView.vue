@@ -138,11 +138,11 @@ function cancelDelete() {
                 title="Modifier"
                 aria-label="Modifier"
                 class="!bg-white !text-gray-700 border hover:bg-gray-50 !h-9 !w-9 !p-0 !rounded-lg md:!px-3 md:!w-auto"
-                @click="startEdit(i as any)"
+                @click="startEdit(i)"
               >
                 <span class="inline-flex items-center gap-2 justify-center w-full">
                   <svg
-                    xmlns="https://www.w3.org/2000/svg"
+                    xmlns="http://www.w3.org/2000/svg"
                     class="h-4 w-4"
                     viewBox="0 0 20 20"
                     fill="currentColor"
@@ -210,7 +210,7 @@ function cancelDelete() {
                 class="!bg-red-600 hover:!bg-red-700 !h-9 !w-9 !p-0 !rounded-lg md:!px-3 md:!w-auto"
                 aria-label="Supprimer"
                 title="Supprimer"
-                @click="askDelete(i as any)"
+                @click="askDelete(i)"
               >
                 <span class="inline-flex items-center gap-2 justify-center w-full">
                   <svg

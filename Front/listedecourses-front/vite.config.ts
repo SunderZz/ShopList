@@ -18,9 +18,8 @@ export default defineConfig({
     hmr: HMR_HOST ? { host: HMR_HOST, clientPort: 5173 } : { clientPort: 5173 },
     proxy: {
       '/api': {
-        target: 'https://localhost:7145',
+        target: 'http://localhost:5145',
         changeOrigin: true,
-        secure: false,
       },
     },
   },

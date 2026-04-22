@@ -165,16 +165,6 @@ watch(selectedIngredientIds, (ids) => {
   }
 })
 
-function dishIngredientIdSet(dishIds: string[]): Set<string> {
-  const set = new Set<string>()
-  for (const dId of dishIds) {
-    const d = dishes.items.find((x: { id: string }) => x.id === dId)
-    if (!d) continue
-    for (const di of d.ingredients) set.add(di.ingredientId)
-  }
-  return set
-}
-
 function openPicker() {
   if (locked.value) return
   const l = current.value

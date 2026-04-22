@@ -170,3 +170,40 @@ Créer un site permettant de **générer une liste de courses à partir de plats
 - **Front-end** : (à définir)
 - **Authentification** : (à implémenter, JWT ?)
 
+---
+
+## Commandes locales fiables
+
+### Back-end
+
+```sh
+cd Back/ListeDeCourses/Api
+dotnet restore ApiList.csproj
+dotnet run
+```
+
+L'API utilise MongoDB en local par defaut via `mongodb://localhost:27017` et la base `ShopList`.
+Elle ecoute en local sur `http://localhost:5145`.
+
+### Front-end
+
+```sh
+cd Front/listedecourses-front
+npm install
+npm run dev
+npm run typecheck
+npm run lint
+npm run build
+```
+
+En developpement, Vite proxy les appels `/api` vers `http://localhost:5145`.
+
+### Audit dependances front
+
+```sh
+cd Front/listedecourses-front
+npm audit --omit=dev
+```
+
+Le full audit peut encore signaler l'alerte dev-server `vite/esbuild`; sa correction demande une migration majeure de Vite et doit etre traitee dans une passe dediee.
+

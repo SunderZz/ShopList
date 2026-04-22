@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from 'vue'
+import { isAxiosError } from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { useUsersStore } from '@/stores/users'
 import BaseInput from '@/components/ui/BaseInput.vue'
@@ -93,15 +94,15 @@ async function submit() {
       password.value = ''
       closeModal()
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const status = isAxiosError(e) ? e.response?.status : undefined
     if (mode.value === 'login') {
-      if (e?.response?.status === 401) {
+      if (status === 401) {
         loginError.value = 'Email ou mot de passe invalide'
       } else {
         loginError.value = 'Une erreur est survenue'
       }
     } else {
-      const status = e?.response?.status
       if (status === 409) {
         emailError.value = 'Email déjà utilisé'
       } else if (status === 400) {

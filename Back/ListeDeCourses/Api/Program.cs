@@ -58,20 +58,39 @@ builder.Services.AddOptions<JwtSettings>()
     .ValidateOnStart();
 
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
-var jwtKey = Environment.GetEnvironmentVariable("JWT__KEY") ?? jwtSettings.Key ?? "dev-only-key-change-me";
+var jwtKey = Environment.GetEnvironmentVariable("JWT__KEY") ?? jwtSettings.Key;
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    if (!builder.Environment.IsDevelopment())
+        throw new InvalidOperationException("JWT key must be configured outside Development.");
+
+    jwtKey = "dev-only-key-change-me-do-not-use-in-production";
+}
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
 const string FrontCors = "FrontCors";
-var allowed = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+var allowed = (builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
+    .Select(origin => origin.Trim().TrimEnd('/'))
+    .Where(origin => !string.IsNullOrWhiteSpace(origin))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(FrontCors, policy =>
     {
         if (allowed.Length > 0)
+        {
             policy.WithOrigins(allowed).AllowAnyHeader().AllowAnyMethod();
-        else
+        }
+        else if (builder.Environment.IsDevelopment())
+        {
             policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        }
+        else
+        {
+            throw new InvalidOperationException("Cors:AllowedOrigins must be configured outside Development.");
+        }
     });
 });
 
