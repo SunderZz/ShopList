@@ -4,7 +4,7 @@ Ce document découpe le travail en jalons courts. Chaque sprint doit produire un
 
 ## Avancement global
 
-Avancement: `16/55 tâches - 29%`
+Avancement: `19/55 tâches - 35%`
 
 Une tâche cochée compte comme terminée uniquement si elle est implémentée, relue et vérifiée. Les critères d'acceptation servent à valider le sprint, mais ne sont pas comptés comme tâches.
 
@@ -73,15 +73,21 @@ Avancement: `9/9 tâches - 100%`
 
 Objectif: garantir que chaque utilisateur standard ne voit que ses listes.
 
-Avancement: `0/5 tâches - 0%`
+Avancement: `3/5 tâches - 60%`
 
 ### Tâches
 
-- [ ] Filtrer les listes par `ownerId` directement au niveau MongoDB.
-- [ ] Permettre à un admin de voir toutes les listes.
-- [ ] Vérifier les droits sur lecture, modification, suppression et cochage d'item.
+- [x] Filtrer les listes par `ownerId` directement au niveau MongoDB.
+- [x] Permettre à un admin de voir toutes les listes.
+- [x] Vérifier les droits sur lecture, modification, suppression et cochage d'item.
 - [ ] Ajouter des tests back pour les scénarios owner/admin/anonyme.
 - [ ] Adapter le front si nécessaire pour les vues admin.
+
+### Notes de vérification
+
+- `ListeService.GetAllAsync` utilise maintenant `ListeRepository.GetByOwnerIdAsync` pour les utilisateurs standard.
+- Les admins gardent `GetAllAsync` global.
+- Les accès par id, modification, suppression et cochage passent par `EnsureOwnership`.
 
 ### Critères d'acceptation
 

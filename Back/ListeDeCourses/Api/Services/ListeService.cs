@@ -12,6 +12,7 @@ public class ListeService
     : BaseService<ListeReadDto, ListeCreateDto, ListeUpdateDto, Liste>,
       IItemCheckService<ListeReadDto> 
 {
+    private readonly ListeRepository _listes;
     private readonly PlatRepository _plats;
     private readonly IngredientRepository _ingredients;
     private readonly IHttpContextAccessor _http;
@@ -23,6 +24,7 @@ public class ListeService
         IHttpContextAccessor httpContextAccessor)
         : base(repository, httpContextAccessor)
     {
+        _listes = repository;
         _plats = plats;
         _ingredients = ingredients;
         _http = httpContextAccessor;
@@ -53,14 +55,15 @@ public class ListeService
     public override async Task<IEnumerable<ListeReadDto>> GetAllAsync(CancellationToken ct = default)
     {
         EnsureAuthenticated();
-        var uid = GetCurrentUserId();
-        var all = await _repository.GetAllAsync(ct);
+        if (IsSuperUser())
+        {
+            return (await _listes.GetAllAsync(ct)).Select(MapToReadDto);
+        }
 
-        var filtered = IsSuperUser() || string.IsNullOrEmpty(uid)
-            ? all
-            : all.Where(l => l.OwnerId == uid);
+        var uid = GetCurrentUserId()
+                  ?? throw new DomainException("Utilisateur non authentifié.", code: "AUTH_REQUIRED", httpStatus: System.Net.HttpStatusCode.Unauthorized);
 
-        return filtered.Select(MapToReadDto);
+        return (await _listes.GetByOwnerIdAsync(uid, ct)).Select(MapToReadDto);
     }
 
     public override async Task<ListeReadDto?> GetByIdAsync(string id, CancellationToken ct = default)
