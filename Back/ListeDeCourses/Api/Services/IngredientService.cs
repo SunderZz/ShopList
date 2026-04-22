@@ -10,7 +10,12 @@ public class IngredientService : BaseService<IngredientReadDto, IngredientCreate
     private readonly PlatService _plats;
     private readonly ListeService _listes;
 
-    public IngredientService(IngredientRepository repository, PlatService plats, ListeService listes) : base(repository)
+    public IngredientService(
+        IngredientRepository repository,
+        PlatService plats,
+        ListeService listes,
+        IHttpContextAccessor httpContextAccessor)
+        : base(repository, httpContextAccessor)
     {
         _plats = plats;
         _listes = listes;
@@ -22,6 +27,7 @@ public class IngredientService : BaseService<IngredientReadDto, IngredientCreate
 
     public override async Task<bool> DeleteAsync(string id, CancellationToken ct = default)
     {
+        EnsureAuthenticated();
         var ok = await _repository.DeleteAsync(id, ct);
         if (!ok) return false;
 

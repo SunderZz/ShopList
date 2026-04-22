@@ -8,6 +8,12 @@ export interface LoginResponse {
   user: User
 }
 
+export interface RegisterRequest {
+  email: string
+  pseudo: string
+  password: string
+}
+
 export interface User {
   id: string
   email: string

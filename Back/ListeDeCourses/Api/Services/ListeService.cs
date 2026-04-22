@@ -21,7 +21,7 @@ public class ListeService
         PlatRepository plats,
         IngredientRepository ingredients,
         IHttpContextAccessor httpContextAccessor)
-        : base(repository)
+        : base(repository, httpContextAccessor)
     {
         _plats = plats;
         _ingredients = ingredients;
@@ -52,6 +52,7 @@ public class ListeService
 
     public override async Task<IEnumerable<ListeReadDto>> GetAllAsync(CancellationToken ct = default)
     {
+        EnsureAuthenticated();
         var uid = GetCurrentUserId();
         var all = await _repository.GetAllAsync(ct);
 
@@ -64,6 +65,7 @@ public class ListeService
 
     public override async Task<ListeReadDto?> GetByIdAsync(string id, CancellationToken ct = default)
     {
+        EnsureAuthenticated();
         var existing = await _repository.GetByIdAsync(id, ct);
         if (existing is null) return null;
 
@@ -73,6 +75,7 @@ public class ListeService
 
     public override async Task<ListeReadDto> CreateAsync(ListeCreateDto dto, CancellationToken ct = default)
     {
+        EnsureAuthenticated();
         var uid = GetCurrentUserId()
                   ?? throw new DomainException("Utilisateur non authentifié.", code: "AUTH_REQUIRED", httpStatus: System.Net.HttpStatusCode.Unauthorized);
 
@@ -86,6 +89,7 @@ public class ListeService
 
     public override async Task<ListeReadDto?> UpdateAsync(string id, ListeUpdateDto dto, CancellationToken ct = default)
     {
+        EnsureAuthenticated();
         var existing = await _repository.GetByIdAsync(id, ct);
         if (existing is null) return default;
 
@@ -107,6 +111,7 @@ public class ListeService
 
     public override async Task<bool> DeleteAsync(string id, CancellationToken ct = default)
     {
+        EnsureAuthenticated();
         var existing = await _repository.GetByIdAsync(id, ct);
         if (existing is null) return false;
 
@@ -136,6 +141,7 @@ public class ListeService
     }
     public async Task<ListeReadDto?> SetItemCheckedAsync(string listId, string ingredientId, bool isChecked, CancellationToken ct = default)
     {
+        EnsureAuthenticated();
         var existing = await _repository.GetByIdAsync(listId, ct);
         if (existing is null) return null;
 

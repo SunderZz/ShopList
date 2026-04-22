@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
 using ListeDeCourses.Api.Services;
 using ListeDeCourses.Api.DTOs;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ListeDeCourses.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("[controller]")]
 [Route("api/[controller]")]
 public abstract class BaseController<TReadDto, TCreateDto, TUpdateDto> : ControllerBase

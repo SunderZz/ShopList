@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace ListeDeCourses.Api.Controllers;
 
+[Authorize(Policy = "AdminOnly")]
 public class UtilisateursController : BaseController<UtilisateurReadDto, UtilisateurCreateDto, UtilisateurUpdateDto>
 {
     public UtilisateursController(UtilisateurService service) : base(service) { }

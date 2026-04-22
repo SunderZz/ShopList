@@ -4,7 +4,7 @@ Ce document découpe le travail en jalons courts. Chaque sprint doit produire un
 
 ## Avancement global
 
-Avancement: `7/55 tâches - 13%`
+Avancement: `16/55 tâches - 29%`
 
 Une tâche cochée compte comme terminée uniquement si elle est implémentée, relue et vérifiée. Les critères d'acceptation servent à valider le sprint, mais ne sont pas comptés comme tâches.
 
@@ -41,19 +41,25 @@ Avancement: `7/7 tâches - 100%`
 
 Objectif: fermer les failles critiques d'accès.
 
-Avancement: `0/9 tâches - 0%`
+Avancement: `9/9 tâches - 100%`
 
 ### Tâches
 
-- [ ] Protéger les contrôleurs CRUD par défaut avec `[Authorize]`.
-- [ ] Garder uniquement les routes publiques nécessaires: santé, login, register.
-- [ ] Séparer l'inscription publique de la création admin d'utilisateur.
-- [ ] Empêcher un client public d'envoyer ou modifier `isSuperUser`.
-- [ ] Ajouter des policies admin pour les routes utilisateurs et les actions globales.
-- [ ] Refuser explicitement les appels anonymes dans les services sensibles.
-- [ ] Restreindre CORS aux origines configurées, sans `AllowAnyOrigin` en production.
-- [ ] Aligner le contrat login front/back.
-- [ ] Ajouter une protection contre brute force ou au minimum un rate limit sur login/register.
+- [x] Protéger les contrôleurs CRUD par défaut avec `[Authorize]`.
+- [x] Garder uniquement les routes publiques nécessaires: santé, login, register.
+- [x] Séparer l'inscription publique de la création admin d'utilisateur.
+- [x] Empêcher un client public d'envoyer ou modifier `isSuperUser`.
+- [x] Ajouter des policies admin pour les routes utilisateurs et les actions globales.
+- [x] Refuser explicitement les appels anonymes dans les services sensibles.
+- [x] Restreindre CORS aux origines configurées, sans `AllowAnyOrigin` en production.
+- [x] Aligner le contrat login front/back.
+- [x] Ajouter une protection contre brute force ou au minimum un rate limit sur login/register.
+
+### Notes de vérification
+
+- `dotnet build ApiList.csproj -o obj/codex-build`, `npm run typecheck` et `npm run lint` passent.
+- Smoke test local: `/healthz` répond `200`, `/ingredients` et `/utilisateurs` répondent `401` en anonyme.
+- `dotnet build ApiList.csproj` vers `bin/` peut échouer si l'API locale est déjà lancée et verrouille `ApiList.dll`/`ApiList.exe`; arrêter le serveur avant un build normal.
 
 ### Critères d'acceptation
 

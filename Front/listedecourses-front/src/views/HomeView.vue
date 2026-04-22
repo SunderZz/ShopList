@@ -2,12 +2,10 @@
 import { computed, ref, onMounted, watch } from 'vue'
 import { isAxiosError } from 'axios'
 import { useAuthStore } from '@/stores/auth'
-import { useUsersStore } from '@/stores/users'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
 const auth = useAuthStore()
-const users = useUsersStore()
 
 const isLogged = computed(() => auth.isAuthenticated)
 const showLogin = ref(false)
@@ -83,11 +81,10 @@ async function submit() {
       await auth.login({ email: email.value.trim(), password: password.value })
       closeModal()
     } else {
-      await users.createOne({
+      await auth.register({
         email: email.value.trim(),
         pseudo: pseudo.value.trim(),
         password: password.value,
-        isSuperUser: false,
       })
       email.value = ''
       pseudo.value = ''

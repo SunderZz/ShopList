@@ -1,10 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using ListeDeCourses.Api.Auth;
+using ListeDeCourses.Api.DTOs;
 using ListeDeCourses.Api.Models;
 using ListeDeCourses.Api.Repositories;
 using ListeDeCourses.Api.Settings;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -31,20 +33,21 @@ namespace ListeDeCourses.Api.Controllers
             [Required, MinLength(3)] public required string Password { get; init; }
         }
 
-        public sealed record LoginResponse(string Token);
+        public sealed record AuthUserResponse(string Id, string Email, string Pseudo, bool IsSuperUser);
+
+        public sealed record LoginResponse(string Token, AuthUserResponse User);
 
         public sealed class RegisterRequest
         {
             [Required, EmailAddress] public required string Email { get; init; }
-            [Required, MinLength(2)] public required string Pseudo { get; init; }
-            [Required, MinLength(3)] public required string Password { get; init; }
+            [Required, MinLength(DtoConstraints.PseudoMin)] public required string Pseudo { get; init; }
+            [Required, MinLength(DtoConstraints.PasswordMin)] public required string Password { get; init; }
         }
 
-        public sealed record RegisterResponse(string Id, string Email, string Pseudo, bool IsSuperUser);
-
         [AllowAnonymous]
+        [EnableRateLimiting("Auth")]
         [HttpPost("register")]
-        public async Task<ActionResult<RegisterResponse>> Register([FromBody] RegisterRequest body, CancellationToken ct)
+        public async Task<ActionResult<AuthUserResponse>> Register([FromBody] RegisterRequest body, CancellationToken ct)
         {
             if (!ModelState.IsValid)
                 return ValidationProblem(ModelState);
@@ -66,15 +69,11 @@ namespace ListeDeCourses.Api.Controllers
 
             var created = await _users.CreateAsync(user, ct);
 
-            return Ok(new RegisterResponse(
-                created.Id ?? string.Empty,
-                created.Email ?? string.Empty,
-                created.Pseudo ?? string.Empty,
-                created.IsSuperUser
-            ));
+            return Ok(ToAuthUserResponse(created));
         }
 
         [AllowAnonymous]
+        [EnableRateLimiting("Auth")]
         [HttpPost("login")]
         public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest body, CancellationToken ct)
         {
@@ -97,8 +96,16 @@ namespace ListeDeCourses.Api.Controllers
             };
 
             var token = JwtTokenGenerator.Generate(user, _jwt, extraClaims);
-            return Ok(new LoginResponse(token));
+            return Ok(new LoginResponse(token, ToAuthUserResponse(user)));
         }
+
+        private static AuthUserResponse ToAuthUserResponse(Utilisateur user) =>
+            new(
+                user.Id ?? string.Empty,
+                user.Email ?? string.Empty,
+                user.Pseudo ?? string.Empty,
+                user.IsSuperUser
+            );
 
         [Authorize]
         [HttpGet("me")]

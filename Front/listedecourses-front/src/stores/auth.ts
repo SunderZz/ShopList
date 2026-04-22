@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/api/axios'
 import { endpoints } from '@/api/endpoints'
-import type { LoginRequest, LoginResponse, User } from '@/api/types'
+import type { LoginRequest, LoginResponse, RegisterRequest, User } from '@/api/types'
 import { isExpired, getExpiryMs } from '@/api/jwt'
 
 const TOKEN_KEY = 'ldc_token'
@@ -83,6 +83,11 @@ export const useAuthStore = defineStore('auth', () => {
     profile.value = data.user
   }
 
+  async function register(payload: RegisterRequest) {
+    const { data } = await api.post<User>(endpoints.auth.register, payload)
+    return data
+  }
+
  
   function logout(opts: { reload?: boolean } = {}) {
     setToken(null)
@@ -108,6 +113,7 @@ export const useAuthStore = defineStore('auth', () => {
     profile,
     isAuthenticated,
     login,
+    register,
     logout,
     loadProfile,
     setToken,

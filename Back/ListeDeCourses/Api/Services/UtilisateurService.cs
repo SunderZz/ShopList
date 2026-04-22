@@ -7,7 +7,8 @@ namespace ListeDeCourses.Api.Services;
 
 public class UtilisateurService : BaseService<UtilisateurReadDto, UtilisateurCreateDto, UtilisateurUpdateDto, Utilisateur>
 {
-    public UtilisateurService(UtilisateurRepository repository) : base(repository) { }
+    public UtilisateurService(UtilisateurRepository repository, IHttpContextAccessor httpContextAccessor)
+        : base(repository, httpContextAccessor) { }
 
     protected override UtilisateurReadDto MapToReadDto(Utilisateur entity) => entity.ToReadDto();
 

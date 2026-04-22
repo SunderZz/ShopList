@@ -9,7 +9,8 @@ public class PlatService : BaseService<PlatReadDto, PlatCreateDto, PlatUpdateDto
 {
     private readonly ListeService _listes;
 
-    public PlatService(PlatRepository repository, ListeService listes) : base(repository)
+    public PlatService(PlatRepository repository, ListeService listes, IHttpContextAccessor httpContextAccessor)
+        : base(repository, httpContextAccessor)
     {
         _listes = listes;
     }
@@ -20,6 +21,7 @@ public class PlatService : BaseService<PlatReadDto, PlatCreateDto, PlatUpdateDto
 
     public override async Task<bool> DeleteAsync(string id, CancellationToken ct = default)
     {
+        EnsureAuthenticated();
         var ok = await _repository.DeleteAsync(id, ct);
         if (!ok) return false;
 
