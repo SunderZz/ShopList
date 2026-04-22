@@ -48,7 +48,7 @@ public class ListeService
     {
         if (IsSuperUser()) return;
         var uid = GetCurrentUserId();
-        if (string.IsNullOrEmpty(uid) || !string.Equals(l.OwnerId, uid, StringComparison.Ordinal))
+        if (string.IsNullOrEmpty(uid) || !string.Equals(l.EffectiveOwnerId, uid, StringComparison.Ordinal))
             throw new DomainException("Accès refusé à cette liste.", code: "LIST_FORBIDDEN", httpStatus: System.Net.HttpStatusCode.Forbidden);
     }
 
@@ -84,6 +84,7 @@ public class ListeService
 
         var entity = dto.ToModel();
         entity.OwnerId = uid;
+        entity.LegacyUserId = null;
 
         await MaterializeAsync(entity, manualFromDto: dto.Items, dishIdsFromDto: dto.DishIds, keepCheckedFrom: null, ct);
         await _repository.CreateAsync(entity, ct);

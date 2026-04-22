@@ -27,7 +27,17 @@ public class Liste
 
     [BsonRepresentation(BsonType.ObjectId)]
     [BsonElement("ownerId")]
-    public string OwnerId { get; set; } = null!;
+    [BsonIgnoreIfNull]
+    public string? OwnerId { get; set; }
+
+    [BsonRepresentation(BsonType.ObjectId)]
+    [BsonElement("userId")]
+    [BsonIgnoreIfNull]
+    public string? LegacyUserId { get; set; }
+
+    [BsonIgnore]
+    public string? EffectiveOwnerId =>
+        !string.IsNullOrWhiteSpace(OwnerId) ? OwnerId : LegacyUserId;
 }
 
 [BsonIgnoreExtraElements]

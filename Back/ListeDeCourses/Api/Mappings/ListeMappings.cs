@@ -13,7 +13,7 @@ public static class ListeMappings
         Date    = m.Date,
         Items   = m.Items?.Select(ToDtoItem).ToList() ?? new(),
         DishIds = m.DishIds ?? new(),
-        OwnerId = m.OwnerId
+        OwnerId = m.EffectiveOwnerId ?? string.Empty
     };
 
     public static Liste ToModel(this ListeCreateDto dto) => new()

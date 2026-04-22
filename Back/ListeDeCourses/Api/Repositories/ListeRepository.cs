@@ -1,16 +1,30 @@
-﻿    using ListeDeCourses.Api.Models;
-    using MongoDB.Driver;
+using ListeDeCourses.Api.Models;
+using MongoDB.Bson;
+using MongoDB.Driver;
 
-    namespace ListeDeCourses.Api.Repositories;
+namespace ListeDeCourses.Api.Repositories;
 
-    public class ListeRepository : BaseRepository<Liste>
+public class ListeRepository : BaseRepository<Liste>
+{
+    public ListeRepository(IMongoDatabase database)
+        : base(database, "listes") { }
+
+    public Task<List<Liste>> GetByOwnerIdAsync(string ownerId, CancellationToken ct = default)
     {
-        public ListeRepository(IMongoDatabase database)
-            : base(database, "listes") { }
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
 
-        public Task<List<Liste>> GetByOwnerIdAsync(string ownerId, CancellationToken ct = default)
+        var ownerFilters = new List<FilterDefinition<Liste>>
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
-            return _collection.Find(x => x.OwnerId == ownerId).ToListAsync(ct);
+            Builders<Liste>.Filter.Eq("ownerId", ownerId),
+            Builders<Liste>.Filter.Eq("userId", ownerId)
+        };
+
+        if (ObjectId.TryParse(ownerId, out var ownerObjectId))
+        {
+            ownerFilters.Add(Builders<Liste>.Filter.Eq("ownerId", ownerObjectId));
+            ownerFilters.Add(Builders<Liste>.Filter.Eq("userId", ownerObjectId));
         }
+
+        return _collection.Find(Builders<Liste>.Filter.Or(ownerFilters)).ToListAsync(ct);
     }
+}

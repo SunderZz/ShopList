@@ -86,6 +86,7 @@ Avancement: `3/5 tâches - 60%`
 ### Notes de vérification
 
 - `ListeService.GetAllAsync` utilise maintenant `ListeRepository.GetByOwnerIdAsync` pour les utilisateurs standard.
+- Compatibilité données existantes: la requête accepte `ownerId` et l'ancien champ `userId` sans migration destructive.
 - Les admins gardent `GetAllAsync` global.
 - Les accès par id, modification, suppression et cochage passent par `EnsureOwnership`.
 
