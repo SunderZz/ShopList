@@ -4,7 +4,7 @@ Ce document découpe le travail en jalons courts. Chaque sprint doit produire un
 
 ## Avancement global
 
-Avancement: `21/55 tâches - 38%`
+Avancement: `29/61 tâches - 48%`
 
 Une tâche cochée compte comme terminée uniquement si elle est implémentée, relue et vérifiée. Les critères d'acceptation servent à valider le sprint, mais ne sont pas comptés comme tâches.
 
@@ -103,7 +103,7 @@ Avancement: `5/5 tâches - 100%`
 
 Objectif: éviter les doublons métier.
 
-Avancement: `7/8 tâches - 88%`
+Avancement: `8/9 tâches - 89%`
 
 ### Tâches
 
@@ -121,6 +121,9 @@ Avancement: `7/8 tâches - 88%`
 
 - L'API bloque les nouveaux doublons sans migration destructive.
 - Les nouveaux documents reçoivent un champ `nameKey` préparant les futurs index.
+- Le front propose une recherche locale dans les écrans ingrédients et plats pour retrouver un élément avant création.
+- Le front bloque aussi la création si le nom saisi correspond déjà à un ingrédient ou plat existant après normalisation simple.
+- L'édition d'un plat s'ouvre maintenant directement sous le plat sélectionné, au lieu de descendre en bas du tableau.
 - Les index uniques restent volontairement en attente: ils peuvent échouer si la base MongoDB contient déjà des doublons.
 - Avant d'activer ces index, auditer les collections `ingredients` et `plats` sur la clé normalisée.
 
