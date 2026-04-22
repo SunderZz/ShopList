@@ -199,7 +199,7 @@ onUnmounted(() => {
       © {{ new Date().getFullYear() }} ListeDeCourses — by
       <a
         class="underline decoration-dotted hover:text-gray-700"
-        href="https://www.google.fr/index.html"
+        href="https://gilles.needemand.com/"
         target="_blank"
         rel="noopener noreferrer"
       >
