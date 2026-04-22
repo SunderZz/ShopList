@@ -15,6 +15,10 @@ public class Plat
     [BsonElement("name")]
     public string Name { get; set; } = null!;
 
+    [BsonElement("nameKey")]
+    [BsonIgnoreIfNull]
+    public string? NameKey { get; set; }
+
     [Required]
     [BsonElement("ingredients")]
     public List<PlatIngredient> Ingredients { get; set; } = new();

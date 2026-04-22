@@ -15,6 +15,10 @@ public class Ingredient
     [BsonElement("name")]
     public string Name { get; set; } = null!;
 
+    [BsonElement("nameKey")]
+    [BsonIgnoreIfNull]
+    public string? NameKey { get; set; }
+
     [MaxLength(100)]
     [BsonElement("aisle")]
     public string? Aisle { get; set; }

@@ -7,13 +7,16 @@ import DataTable from '@/components/ui/DataTable.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import type { Ingredient } from '@/api/types'
 import { useFlash } from '@/composables/useFlash'
+import { getApiErrorMessage } from '@/api/errors'
 
 const store = useIngredientsStore()
 
 const form = ref({ name: '', aisle: '' })
+const formError = ref<string | null>(null)
 
 const editingId = ref<string | null>(null)
 const editForm = ref<{ name: string; aisle: string }>({ name: '', aisle: '' })
+const editError = ref<string | null>(null)
 
 const { flashSet, flashRow } = useFlash()
 
@@ -23,31 +26,45 @@ onMounted(() => {
 
 async function createItem() {
   if (!form.value.name) return
-  const prevLen = store.items.length
-  await store.createOne(form.value)
-  await nextTick()
-  const created = store.items.length > prevLen ? store.items[store.items.length - 1] : null
-  flashRow(created?.id)
-  form.value = { name: '', aisle: '' }
+  formError.value = null
+
+  try {
+    const prevLen = store.items.length
+    await store.createOne(form.value)
+    await nextTick()
+    const created = store.items.length > prevLen ? store.items[store.items.length - 1] : null
+    flashRow(created?.id)
+    form.value = { name: '', aisle: '' }
+  } catch (error: unknown) {
+    formError.value = getApiErrorMessage(error, 'Impossible de créer cet ingrédient.')
+  }
 }
 
 function startEdit(i: { id: string; name: string; aisle: string | null }) {
   editingId.value = i.id
   editForm.value = { name: i.name ?? '', aisle: i.aisle ?? '' }
+  editError.value = null
 }
 
 function cancelEdit() {
   editingId.value = null
+  editError.value = null
 }
 
 async function confirmEdit(id: string) {
-  await store.updateOne(id, {
-    name: editForm.value.name,
-    aisle: editForm.value.aisle,
-  })
-  editingId.value = null
-  await nextTick()
-  flashRow(id)
+  editError.value = null
+
+  try {
+    await store.updateOne(id, {
+      name: editForm.value.name,
+      aisle: editForm.value.aisle,
+    })
+    editingId.value = null
+    await nextTick()
+    flashRow(id)
+  } catch (error: unknown) {
+    editError.value = getApiErrorMessage(error, 'Impossible de modifier cet ingrédient.')
+  }
 }
 
 const confirmOpen = ref(false)
@@ -99,6 +116,10 @@ function cancelDelete() {
       </div>
     </form>
 
+    <p v-if="formError" class="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+      {{ formError }}
+    </p>
+
     <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
       <DataTable :loading="store.loading">
         <template #head>
@@ -116,6 +137,7 @@ function cancelDelete() {
           <td class="p-3 align-middle">
             <template v-if="editingId === i.id">
               <BaseInput v-model="editForm.name" />
+              <p v-if="editError" class="mt-1 text-xs text-red-600">{{ editError }}</p>
             </template>
             <template v-else>
               {{ i.name }}

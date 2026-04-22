@@ -10,6 +10,7 @@ import BaseModal from '@/components/ui/BaseModal.vue'
 import { useFlash } from '@/composables/useFlash'
 import { useMapById } from '@/composables/useMapById'
 import type { Dish, Ingredient } from '@/api/types'
+import { getApiErrorMessage } from '@/api/errors'
 
 const dishes = useDishesStore()
 const ingredients = useIngredientsStore()
@@ -17,6 +18,7 @@ const ingredients = useIngredientsStore()
 const UNIT_OPTIONS = ['g', 'kg', 'paquet','unité']
 
 const createName = ref<string>('')
+const createError = ref<string | null>(null)
 type QtyUnit = { quantity: number | null; unit: string | null }
 
 type CreateSelMeta = { quantity: number | null; unit: string | null }
@@ -87,32 +89,37 @@ function confirmCreatePicker() {
 const { flashSet, flashRow } = useFlash()
 
 async function createDish() {
+  createError.value = null
   if (selectedCreateIds.value.length && !validateCreateSelection()) return
   if (!createName.value.trim()) return
 
-  const ingredientsPayload = selectedCreateIds.value.map((id) => {
-    const meta = createMetaById.value[id] ?? { quantity: null, unit: null }
-    return { ingredientId: id, quantity: meta.quantity, unit: meta.unit }
-  })
+  try {
+    const ingredientsPayload = selectedCreateIds.value.map((id) => {
+      const meta = createMetaById.value[id] ?? { quantity: null, unit: null }
+      return { ingredientId: id, quantity: meta.quantity, unit: meta.unit }
+    })
 
-  const prevLen = dishes.items.length
-  const created = await dishes.createOne({
-    name: createName.value.trim(),
-    ingredients: ingredientsPayload,
-  })
+    const prevLen = dishes.items.length
+    const created = await dishes.createOne({
+      name: createName.value.trim(),
+      ingredients: ingredientsPayload,
+    })
 
-  let createdId: string | null = created.id
-  if (!createdId && dishes.items.length > prevLen) {
-    createdId = dishes.items[dishes.items.length - 1]?.id ?? null
+    let createdId: string | null = created.id
+    if (!createdId && dishes.items.length > prevLen) {
+      createdId = dishes.items[dishes.items.length - 1]?.id ?? null
+    }
+    await nextTick()
+    flashRow(createdId)
+
+    createName.value = ''
+    selectedCreateIds.value = []
+    createMetaById.value = {}
+    createPickerErrors.value = {}
+    globalCreatePickerError.value = null
+  } catch (error: unknown) {
+    createError.value = getApiErrorMessage(error, 'Impossible de créer ce plat.')
   }
-  await nextTick()
-  flashRow(createdId)
-
-  createName.value = ''
-  selectedCreateIds.value = []
-  createMetaById.value = {}
-  createPickerErrors.value = {}
-  globalCreatePickerError.value = null
 }
 
 type EditRow = {
@@ -188,6 +195,7 @@ function validateEdit(): boolean {
 
 async function saveEdit() {
   if (!editingDishId.value) return
+  globalEditError.value = null
   if (!validateEdit()) return
 
   const payload = editRows.value
@@ -197,13 +205,17 @@ async function saveEdit() {
       quantity: r.quantity,
       unit: r.unit,
     }))
-  await dishes.updateOne(editingDishId.value, { ingredients: payload })
-  const editedId = editingDishId.value
-  editingDishId.value = null
-  editRows.value = []
-  showAddInline.value = false
-  await nextTick()
-  flashRow(editedId)
+  try {
+    await dishes.updateOne(editingDishId.value, { ingredients: payload })
+    const editedId = editingDishId.value
+    editingDishId.value = null
+    editRows.value = []
+    showAddInline.value = false
+    await nextTick()
+    flashRow(editedId)
+  } catch (error: unknown) {
+    globalEditError.value = getApiErrorMessage(error, 'Impossible de modifier ce plat.')
+  }
 }
 
 function scrollToEdit() {
@@ -293,6 +305,13 @@ onMounted(() => {
             Créer
           </BaseButton>
         </div>
+      </div>
+
+      <div
+        v-if="createError"
+        class="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700"
+      >
+        {{ createError }}
       </div>
 
       <div

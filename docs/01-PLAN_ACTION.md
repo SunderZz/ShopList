@@ -101,16 +101,23 @@ Avancement: `3/5 tâches - 60%`
 
 Objectif: éviter les doublons métier.
 
-Avancement: `0/6 tâches - 0%`
+Avancement: `5/6 tâches - 83%`
 
 ### Tâches
 
-- [ ] Définir la règle d'unicité pour les ingrédients: probablement `name` normalisé.
-- [ ] Définir la règle d'unicité pour les plats: probablement `name` normalisé.
+- [x] Définir la règle d'unicité pour les ingrédients: `name` trim, casse ignorée, espaces multiples normalisés.
+- [x] Définir la règle d'unicité pour les plats: `name` trim, casse ignorée, espaces multiples normalisés.
 - [ ] Ajouter des index uniques MongoDB.
-- [ ] Normaliser côté back les noms: trim, casse, espaces multiples.
-- [ ] Retourner `409 Conflict` en cas de doublon.
-- [ ] Adapter le front pour afficher un message clair.
+- [x] Normaliser côté back les noms: trim, casse, espaces multiples.
+- [x] Retourner `409 Conflict` en cas de doublon.
+- [x] Adapter le front pour afficher un message clair.
+
+### Notes de vérification
+
+- L'API bloque les nouveaux doublons sans migration destructive.
+- Les nouveaux documents reçoivent un champ `nameKey` préparant les futurs index.
+- Les index uniques restent volontairement en attente: ils peuvent échouer si la base MongoDB contient déjà des doublons.
+- Avant d'activer ces index, auditer les collections `ingredients` et `plats` sur la clé normalisée.
 
 ### Critères d'acceptation
 
