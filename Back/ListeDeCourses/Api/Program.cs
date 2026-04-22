@@ -71,11 +71,27 @@ if (string.IsNullOrWhiteSpace(jwtKey))
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
 const string FrontCors = "FrontCors";
-var allowed = (builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
+const string ProductionFrontOrigin = "https://shop-list-two.vercel.app";
+var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+var envOrigins = new[]
+{
+    Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS"),
+    Environment.GetEnvironmentVariable("FRONTEND_URL")
+}
+    .Where(value => !string.IsNullOrWhiteSpace(value))
+    .SelectMany(value => value!.Split(',', ';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+var allowed = configuredOrigins
+    .Concat(envOrigins)
     .Select(origin => origin.Trim().TrimEnd('/'))
     .Where(origin => !string.IsNullOrWhiteSpace(origin))
     .Distinct(StringComparer.OrdinalIgnoreCase)
     .ToArray();
+
+if (allowed.Length == 0 && !builder.Environment.IsDevelopment())
+{
+    allowed = [ProductionFrontOrigin];
+}
 
 builder.Services.AddCors(options =>
 {
