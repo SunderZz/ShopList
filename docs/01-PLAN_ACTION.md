@@ -4,7 +4,7 @@ Ce document découpe le travail en jalons courts. Chaque sprint doit produire un
 
 ## Avancement global
 
-Avancement: `19/55 tâches - 35%`
+Avancement: `21/55 tâches - 38%`
 
 Une tâche cochée compte comme terminée uniquement si elle est implémentée, relue et vérifiée. Les critères d'acceptation servent à valider le sprint, mais ne sont pas comptés comme tâches.
 
@@ -73,15 +73,15 @@ Avancement: `9/9 tâches - 100%`
 
 Objectif: garantir que chaque utilisateur standard ne voit que ses listes.
 
-Avancement: `3/5 tâches - 60%`
+Avancement: `5/5 tâches - 100%`
 
 ### Tâches
 
 - [x] Filtrer les listes par `ownerId` directement au niveau MongoDB.
 - [x] Permettre à un admin de voir toutes les listes.
 - [x] Vérifier les droits sur lecture, modification, suppression et cochage d'item.
-- [ ] Ajouter des tests back pour les scénarios owner/admin/anonyme.
-- [ ] Adapter le front si nécessaire pour les vues admin.
+- [x] Ajouter des tests back pour les scénarios owner/admin/anonyme.
+- [x] Adapter le front si nécessaire pour les vues admin.
 
 ### Notes de vérification
 
@@ -89,6 +89,8 @@ Avancement: `3/5 tâches - 60%`
 - Compatibilité données existantes: la requête accepte `ownerId` et l'ancien champ `userId` sans migration destructive.
 - Les admins gardent `GetAllAsync` global.
 - Les accès par id, modification, suppression et cochage passent par `EnsureOwnership`.
+- Tests back ajoutes dans `Back/ListeDeCourses.Api.Tests`: anonyme, utilisateur standard, admin, acces par id, mutations interdites, cochage d'item et creation owner.
+- Les vues listes affichent le proprietaire pour les administrateurs.
 
 ### Critères d'acceptation
 

@@ -9,7 +9,7 @@ public class ListeRepository : BaseRepository<Liste>
     public ListeRepository(IMongoDatabase database)
         : base(database, "listes") { }
 
-    public Task<List<Liste>> GetByOwnerIdAsync(string ownerId, CancellationToken ct = default)
+    public virtual Task<List<Liste>> GetByOwnerIdAsync(string ownerId, CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
 

@@ -4,10 +4,12 @@ import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useListsStore } from '@/stores/lists'
 import { useDishesStore } from '@/stores/dishes'
 import { useIngredientsStore } from '@/stores/ingredients'
+import { useUsersStore } from '@/stores/users'
+import { useAuthStore } from '@/stores/auth'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import QtyUnitInput from '@/components/ui/QtyUnitInput.vue'
-import type { ShoppingList, ShoppingListItem, Ingredient, Dish } from '@/api/types'
+import type { ShoppingList, ShoppingListItem, Ingredient, Dish, User } from '@/api/types'
 import { useMapById } from '@/composables/useMapById'
 
 const route = useRoute()
@@ -15,12 +17,25 @@ const router = useRouter()
 const lists = useListsStore()
 const dishes = useDishesStore()
 const ingredients = useIngredientsStore()
+const users = useUsersStore()
+const auth = useAuthStore()
 type QtyUnit = { quantity: number | null; unit: string | null }
 
 const id = String(route.params.id)
 const current = computed<ShoppingList | null>(
   () => lists.items.find((l: { id: string }) => l.id === id) ?? lists.current ?? null
 )
+const isAdmin = computed(() => auth.profile?.isSuperUser === true)
+const usersById = computed<Record<string, User>>(() => {
+  const m: Record<string, User> = {}
+  for (const u of users.items) m[u.id] = u
+  return m
+})
+
+function ownerLabel(ownerId: string) {
+  const user = usersById.value[ownerId]
+  return user ? `${user.pseudo} (${user.email})` : ownerId || 'Inconnu'
+}
 
 const itemsView = ref<ShoppingListItem[]>([])
 function syncFromCurrent() {
@@ -66,6 +81,7 @@ onMounted(async () => {
   if (!current.value) await lists.fetchById(id)
   if (!dishes.items.length) await dishes.fetchAll()
   if (!ingredients.items.length) await ingredients.fetchAll()
+  if (isAdmin.value && !users.items.length) await users.fetchAll()
   window.addEventListener('beforeunload', handleBeforeUnload)
   document.addEventListener('click', onGlobalClickCapture, true)
   syncFromCurrent()
@@ -260,6 +276,9 @@ async function removeList() {
       <div>
         <h1 class="text-3xl md:text-2xl font-semibold tracking-tight">{{ current.name }}</h1>
         <p class="text-sm text-gray-500">{{ new Date(current.date).toLocaleDateString() }}</p>
+        <p v-if="isAdmin" class="text-sm text-gray-500">
+          Proprietaire : {{ ownerLabel(current.ownerId) }}
+        </p>
       </div>
       <div class="flex flex-wrap gap-2">
         <BaseButton

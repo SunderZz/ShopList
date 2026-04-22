@@ -4,16 +4,20 @@ import { useRouter } from 'vue-router'
 import { useListsStore } from '@/stores/lists'
 import { useDishesStore } from '@/stores/dishes'
 import { useIngredientsStore } from '@/stores/ingredients'
+import { useUsersStore } from '@/stores/users'
+import { useAuthStore } from '@/stores/auth'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import DataTable from '@/components/ui/DataTable.vue'
 import QtyUnitInput from '@/components/ui/QtyUnitInput.vue'
-import type { ShoppingListItem, Ingredient, Dish } from '@/api/types'
+import type { ShoppingListItem, Ingredient, Dish, User } from '@/api/types'
 
 const router = useRouter()
 const lists = useListsStore()
 const dishes = useDishesStore()
 const ingredients = useIngredientsStore()
+const users = useUsersStore()
+const auth = useAuthStore()
 
 const createName = ref<string>('')
 const createDate = ref<string>(new Date().toISOString().slice(0, 10))
@@ -34,11 +38,23 @@ const UNIT_OPTIONS = ['kg', 'g', 'paquet', 'unité']
 
 const pickerErrors = ref<Record<string, string>>({})
 const globalPickerError = ref<string | null>(null)
+const isAdmin = computed(() => auth.profile?.isSuperUser === true)
+const usersById = computed<Record<string, User>>(() => {
+  const m: Record<string, User> = {}
+  for (const u of users.items) m[u.id] = u
+  return m
+})
+
+function ownerLabel(ownerId: string) {
+  const user = usersById.value[ownerId]
+  return user ? `${user.pseudo} (${user.email})` : ownerId || 'Inconnu'
+}
 
 onMounted(() => {
   lists.fetchAll()
   dishes.fetchAll()
   ingredients.fetchAll()
+  if (isAdmin.value && !users.items.length) users.fetchAll()
 })
 
 const dishOptions = computed<Dish[]>(() => dishes.items)
@@ -182,6 +198,9 @@ function goDetail(lId: string) {
         <DataTable :loading="lists.loading">
           <template #head>
             <th class="p-3 bg-gray-50 text-left text-gray-700 font-medium">Nom</th>
+            <th v-if="isAdmin" class="p-3 bg-gray-50 text-left text-gray-700 font-medium">
+              Proprietaire
+            </th>
             <th class="p-3 bg-gray-50 text-left text-gray-700 font-medium">Date</th>
             <th class="p-3 bg-gray-50 text-left text-gray-700 font-medium">Ingrédients</th>
             <th class="p-3 bg-gray-50 text-left text-gray-700 font-medium">Plats</th>
@@ -193,6 +212,7 @@ function goDetail(lId: string) {
             @click="goDetail(l.id)"
           >
             <td class="p-3 font-medium">{{ l.name }}</td>
+            <td v-if="isAdmin" class="p-3 text-sm text-gray-600">{{ ownerLabel(l.ownerId) }}</td>
             <td class="p-3">{{ new Date(l.date).toLocaleDateString() }}</td>
             <td class="p-3">{{ l.items.length }}</td>
             <td class="p-3">{{ l.dishIds.length }}</td>
@@ -212,6 +232,9 @@ function goDetail(lId: string) {
               <div class="font-medium truncate">{{ l.name }}</div>
               <div class="text-xs text-gray-500 mt-0.5">
                 {{ new Date(l.date).toLocaleDateString() }}
+              </div>
+              <div v-if="isAdmin" class="text-xs text-gray-500 mt-1 truncate">
+                {{ ownerLabel(l.ownerId) }}
               </div>
             </div>
             <div class="flex items-center gap-2 shrink-0">

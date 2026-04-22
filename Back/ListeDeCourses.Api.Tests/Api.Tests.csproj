@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
+    <NuGetRestoreTargets Condition="'$(NuGetRestoreTargets)' == '' and Exists('$(MSBuildToolsPath)\runtimes\any\native\NuGet.targets')">$(MSBuildToolsPath)\runtimes\any\native\NuGet.targets</NuGetRestoreTargets>
+    <RestoreTaskAssemblyFile Condition="'$(RestoreTaskAssemblyFile)' == '' and Exists('$(MSBuildToolsPath)\NuGet.Build.Tasks.dll')">$(MSBuildToolsPath)\NuGet.Build.Tasks.dll</RestoreTaskAssemblyFile>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ListeDeCourses\Api\ApiList.csproj" />
+  </ItemGroup>
+
+</Project>

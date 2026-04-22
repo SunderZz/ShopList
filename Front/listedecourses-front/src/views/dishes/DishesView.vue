@@ -19,6 +19,7 @@ const UNIT_OPTIONS = ['g', 'kg', 'paquet','unité']
 
 const createName = ref<string>('')
 const createError = ref<string | null>(null)
+const dishSearch = ref('')
 type QtyUnit = { quantity: number | null; unit: string | null }
 
 type CreateSelMeta = { quantity: number | null; unit: string | null }
@@ -32,6 +33,27 @@ const globalCreatePickerError = ref<string | null>(null)
 
 const ingredientOptions = computed<Ingredient[]>(() => ingredients.items)
 const { byId: ingById } = useMapById(() => ingredientOptions.value)
+
+function normalizeSearch(value: string | null | undefined) {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+}
+
+const filteredDishes = computed(() => {
+  const q = normalizeSearch(dishSearch.value)
+  if (!q) return dishes.items
+  return dishes.items.filter((d) => normalizeSearch(d.name).includes(q))
+})
+
+const createNameAlreadyExists = computed(() => {
+  const name = normalizeSearch(createName.value)
+  if (!name) return false
+  return dishes.items.some((d) => normalizeSearch(d.name) === name)
+})
 
 const filteredIngredientsCreate = computed(() => {
   const q = ingSearchCreate.value.trim().toLowerCase()
@@ -92,6 +114,7 @@ async function createDish() {
   createError.value = null
   if (selectedCreateIds.value.length && !validateCreateSelection()) return
   if (!createName.value.trim()) return
+  if (createNameAlreadyExists.value) return
 
   try {
     const ingredientsPayload = selectedCreateIds.value.map((id) => {
@@ -307,13 +330,20 @@ onMounted(() => {
         </div>
         <div class="text-right md:col-span-1">
           <BaseButton
-            :disabled="!createName.trim()"
+            :disabled="!createName.trim() || createNameAlreadyExists"
             class="!h-11 !rounded-xl !px-5 !shadow-sm hover:!shadow-md"
             @click="createDish"
           >
             Créer
           </BaseButton>
         </div>
+      </div>
+
+      <div
+        v-if="createNameAlreadyExists"
+        class="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800"
+      >
+        Ce plat existe deja. Utilisez la recherche pour le retrouver avant d'en creer un nouveau.
       </div>
 
       <div
@@ -359,10 +389,26 @@ onMounted(() => {
       </div>
     </div>
 
+    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+      <div class="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+        <BaseInput label="Rechercher un plat" v-model="dishSearch" placeholder="Nom du plat" />
+        <BaseButton
+          v-if="dishSearch"
+          type="button"
+          class="!bg-gray-200 !text-gray-800 !h-11 !rounded-xl !px-5"
+          @click="dishSearch = ''"
+        >
+          Effacer
+        </BaseButton>
+      </div>
+      <p class="mt-2 text-xs text-gray-500">
+        {{ filteredDishes.length }} resultat(s) sur {{ dishes.items.length }} plat(s)
+      </p>
+    </div>
+
     <div class="md:hidden space-y-3">
+      <template v-for="d in filteredDishes" :key="d.id">
       <div
-        v-for="d in dishes.items"
-        :key="d.id"
         class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"
         :class="flashSet[d.id] ? 'row-flash' : ''"
       >
@@ -381,7 +427,7 @@ onMounted(() => {
       </div>
 
       <div
-        v-if="editingDishId"
+        v-if="editingDishId === d.id"
         class="bg-gray-50 border border-gray-200 rounded-xl p-3"
         ref="editSectionRef"
       >
@@ -502,6 +548,14 @@ onMounted(() => {
           </div>
         </div>
       </div>
+      </template>
+
+      <div
+        v-if="!filteredDishes.length && !dishes.loading"
+        class="bg-white border border-gray-200 rounded-xl p-4 text-sm text-gray-500"
+      >
+        Aucun plat trouve
+      </div>
     </div>
 
     <div
@@ -514,23 +568,22 @@ onMounted(() => {
           <th class="p-3 bg-gray-50 text-right text-gray-700 font-medium">Actions</th>
         </template>
 
-        <tr
-          v-for="d in dishes.items"
-          :key="d.id"
-          class="border-t hover:bg-gray-50/60 transition"
-          :class="flashSet[d.id] ? 'row-flash' : ''"
-        >
-          <td class="p-3 font-medium align-middle">{{ d.name }}</td>
-          <td class="p-3 align-middle">{{ dishDisplayedCount(d) }}</td>
-          <td class="p-3 text-right space-x-2 whitespace-nowrap align-middle">
-            <BaseButton class="!h-9 !px-3 !rounded-lg" @click="startEdit(d)">Modifier</BaseButton>
-            <BaseButton class="!bg-red-600 !h-9 !px-3 !rounded-lg" @click="askDelete(d)"
-              >Supprimer</BaseButton
-            >
-          </td>
-        </tr>
+        <template v-for="d in filteredDishes" :key="d.id">
+          <tr
+            class="border-t hover:bg-gray-50/60 transition"
+            :class="flashSet[d.id] ? 'row-flash' : ''"
+          >
+            <td class="p-3 font-medium align-middle">{{ d.name }}</td>
+            <td class="p-3 align-middle">{{ dishDisplayedCount(d) }}</td>
+            <td class="p-3 text-right space-x-2 whitespace-nowrap align-middle">
+              <BaseButton class="!h-9 !px-3 !rounded-lg" @click="startEdit(d)">Modifier</BaseButton>
+              <BaseButton class="!bg-red-600 !h-9 !px-3 !rounded-lg" @click="askDelete(d)"
+                >Supprimer</BaseButton
+              >
+            </td>
+          </tr>
 
-        <tr v-if="editingDishId" class="border-t">
+        <tr v-if="editingDishId === d.id" class="border-t">
           <td colspan="3" class="p-0">
             <div class="bg-gray-50 p-3" ref="editSectionRef">
               <div class="flex items-center justify-between mb-3">
@@ -646,6 +699,11 @@ onMounted(() => {
               </div>
             </div>
           </td>
+        </tr>
+        </template>
+
+        <tr v-if="!filteredDishes.length && !dishes.loading">
+          <td colspan="3" class="p-4 text-sm text-gray-500">Aucun plat trouve</td>
         </tr>
       </DataTable>
     </div>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, nextTick } from 'vue'
+import { computed, onMounted, ref, nextTick } from 'vue'
 import { useIngredientsStore } from '@/stores/ingredients'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -13,6 +13,7 @@ const store = useIngredientsStore()
 
 const form = ref({ name: '', aisle: '' })
 const formError = ref<string | null>(null)
+const search = ref('')
 
 const editingId = ref<string | null>(null)
 const editForm = ref<{ name: string; aisle: string }>({ name: '', aisle: '' })
@@ -20,12 +21,36 @@ const editError = ref<string | null>(null)
 
 const { flashSet, flashRow } = useFlash()
 
+function normalizeSearch(value: string | null | undefined) {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+}
+
+const filteredItems = computed(() => {
+  const q = normalizeSearch(search.value)
+  if (!q) return store.items
+  return store.items.filter((i) => {
+    return normalizeSearch(i.name).includes(q) || normalizeSearch(i.aisle).includes(q)
+  })
+})
+
+const createNameAlreadyExists = computed(() => {
+  const name = normalizeSearch(form.value.name)
+  if (!name) return false
+  return store.items.some((i) => normalizeSearch(i.name) === name)
+})
+
 onMounted(() => {
   store.fetchAll()
 })
 
 async function createItem() {
   if (!form.value.name) return
+  if (createNameAlreadyExists.value) return
   formError.value = null
 
   try {
@@ -109,16 +134,40 @@ function cancelDelete() {
         <BaseButton
           type="submit"
           class="!h-11 !rounded-xl !px-5 !shadow-sm hover:!shadow-md w-full md:w-auto"
-          :disabled="!form.name"
+          :disabled="!form.name || createNameAlreadyExists"
         >
           Ajouter
         </BaseButton>
       </div>
     </form>
 
+    <p
+      v-if="createNameAlreadyExists"
+      class="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800"
+    >
+      Cet ingredient existe deja. Utilisez la recherche pour le retrouver avant d'en creer un nouveau.
+    </p>
+
     <p v-if="formError" class="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
       {{ formError }}
     </p>
+
+    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+      <div class="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+        <BaseInput label="Rechercher un ingredient" v-model="search" placeholder="Nom ou rayon" />
+        <BaseButton
+          v-if="search"
+          type="button"
+          class="!bg-gray-200 !text-gray-800 !h-11 !rounded-xl !px-5"
+          @click="search = ''"
+        >
+          Effacer
+        </BaseButton>
+      </div>
+      <p class="mt-2 text-xs text-gray-500">
+        {{ filteredItems.length }} resultat(s) sur {{ store.items.length }} ingredient(s)
+      </p>
+    </div>
 
     <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
       <DataTable :loading="store.loading">
@@ -129,7 +178,7 @@ function cancelDelete() {
         </template>
 
         <tr
-          v-for="i in store.items"
+          v-for="i in filteredItems"
           :key="i.id"
           class="border-t hover:bg-gray-50/60 transition"
           :class="flashSet[i.id] ? 'row-flash' : ''"
@@ -253,6 +302,10 @@ function cancelDelete() {
               </BaseButton>
             </div>
           </td>
+        </tr>
+
+        <tr v-if="!filteredItems.length && !store.loading">
+          <td colspan="3" class="p-4 text-sm text-gray-500">Aucun ingredient trouve</td>
         </tr>
       </DataTable>
     </div>
