@@ -101,7 +101,7 @@ Avancement: `3/5 tâches - 60%`
 
 Objectif: éviter les doublons métier.
 
-Avancement: `5/6 tâches - 83%`
+Avancement: `7/8 tâches - 88%`
 
 ### Tâches
 
@@ -109,8 +109,11 @@ Avancement: `5/6 tâches - 83%`
 - [x] Définir la règle d'unicité pour les plats: `name` trim, casse ignorée, espaces multiples normalisés.
 - [ ] Ajouter des index uniques MongoDB.
 - [x] Normaliser côté back les noms: trim, casse, espaces multiples.
+- [x] Empêcher la création d'un ingrédient existant.
+- [x] Empêcher la création d'un plat existant.
 - [x] Retourner `409 Conflict` en cas de doublon.
 - [x] Adapter le front pour afficher un message clair.
+- [x] Permettre la modification du nom d'un plat.
 
 ### Notes de vérification
 
@@ -123,6 +126,7 @@ Avancement: `5/6 tâches - 83%`
 
 - Impossible de créer deux ingrédients équivalents comme `Tomate`, ` tomate ` ou `TOMATE`.
 - Impossible de créer deux plats équivalents.
+- Le nom d'un plat peut être modifié.
 - Les erreurs de doublon sont lisibles côté UI.
 
 ## Sprint 4 - Normalisation des unités et agrégation
@@ -170,12 +174,15 @@ Avancement: `0/5 tâches - 0%`
 
 Objectif: rendre l'interface plus fiable et confortable sur desktop et mobile.
 
-Avancement: `0/6 tâches - 0%`
+Avancement: `0/9 tâches - 0%`
 
 ### Tâches
 
 - [ ] Tester chaque écran sur mobile: accueil, login/register, ingrédients, plats, listes, détail liste, utilisateurs admin.
 - [ ] Corriger les débordements, boutons trop petits, modales difficiles à utiliser.
+- [ ] Corriger les tableaux/listes responsive: dernière ligne visible sur mobile, pas de barre horizontale inutile sur desktop, largeur adaptée à la fenêtre.
+- [ ] Ajouter un bouton de création sur les pages ingrédients, plats et listes pour ouvrir une modale dédiée.
+- [ ] Ajouter un bouton Annuler dans les modales de création d'ingrédient, plat et liste pour fermer la création sans enregistrer.
 - [ ] Supprimer le blocage du zoom mobile sauf justification forte.
 - [ ] Améliorer les états loading, empty, error.
 - [ ] Ajouter confirmations cohérentes sur suppressions sensibles.
@@ -185,6 +192,9 @@ Avancement: `0/6 tâches - 0%`
 
 - Toutes les fonctions principales sont utilisables sur écran mobile.
 - Aucun texte ou bouton important ne déborde.
+- Les dernières lignes des tableaux/listes restent accessibles sur mobile.
+- Les vues desktop s'adaptent à la largeur disponible sans scroll horizontal inutile.
+- Les créations d'ingrédient, plat et liste passent par une modale ouvrable et annulable.
 - Les erreurs API sont visibles et compréhensibles.
 - Le zoom navigateur n'est pas bloqué sans raison d'accessibilité documentée.
 

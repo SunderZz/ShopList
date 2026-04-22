@@ -131,6 +131,7 @@ type EditRow = {
   included: boolean
 }
 const editingDishId = ref<string | null>(null)
+const editName = ref<string>('')
 const editRows = ref<EditRow[]>([])
 const showAddInline = ref(false)
 const ingSearchEdit = ref('')
@@ -149,6 +150,7 @@ const filteredIngredientsEdit = computed(() => {
 
 function cancelEdit() {
   editingDishId.value = null
+  editName.value = ''
   editRows.value = []
   showAddInline.value = false
   ingSearchEdit.value = ''
@@ -196,6 +198,11 @@ function validateEdit(): boolean {
 async function saveEdit() {
   if (!editingDishId.value) return
   globalEditError.value = null
+  const normalizedName = editName.value.trim()
+  if (!normalizedName) {
+    globalEditError.value = 'Nom du plat requis.'
+    return
+  }
   if (!validateEdit()) return
 
   const payload = editRows.value
@@ -206,9 +213,10 @@ async function saveEdit() {
       unit: r.unit,
     }))
   try {
-    await dishes.updateOne(editingDishId.value, { ingredients: payload })
+    await dishes.updateOne(editingDishId.value, { name: normalizedName, ingredients: payload })
     const editedId = editingDishId.value
     editingDishId.value = null
+    editName.value = ''
     editRows.value = []
     showAddInline.value = false
     await nextTick()
@@ -227,6 +235,7 @@ function scrollToEdit() {
 
 async function startEdit(d: Dish) {
   editingDishId.value = d.id
+  editName.value = d.name ?? ''
   editRows.value = (d.ingredients ?? [])
     .map((it) => {
       const iid = String(it.ingredientId)
@@ -377,15 +386,19 @@ onMounted(() => {
         ref="editSectionRef"
       >
         <div class="flex items-center justify-between mb-3">
-          <div class="font-medium">Éditer les ingrédients du plat</div>
+          <div class="font-medium">Éditer le plat</div>
           <div class="flex gap-2">
             <BaseButton
               class="!bg-gray-200 !text-gray-800 !h-9 !px-3 !rounded-lg"
               @click="cancelEdit"
               >Annuler</BaseButton
             >
-            <BaseButton class="!h-9 !px-3 !rounded-lg" @click="saveEdit">Enregistrer</BaseButton>
+            <BaseButton class="!h-9 !px-3 !rounded-lg" :disabled="!editName.trim()" @click="saveEdit">Enregistrer</BaseButton>
           </div>
+        </div>
+
+        <div class="mb-3">
+          <BaseInput label="Nom du plat" v-model="editName" placeholder="ex: Pâtes bolognaise" />
         </div>
 
         <div
@@ -521,17 +534,21 @@ onMounted(() => {
           <td colspan="3" class="p-0">
             <div class="bg-gray-50 p-3" ref="editSectionRef">
               <div class="flex items-center justify-between mb-3">
-                <div class="font-medium">Éditer les ingrédients du plat</div>
+                <div class="font-medium">Éditer le plat</div>
                 <div class="flex gap-2">
                   <BaseButton
                     class="!bg-gray-200 !text-gray-800 !h-9 !px-3 !rounded-lg"
                     @click="cancelEdit"
                     >Annuler</BaseButton
                   >
-                  <BaseButton class="!h-9 !px-3 !rounded-lg" @click="saveEdit"
+                  <BaseButton class="!h-9 !px-3 !rounded-lg" :disabled="!editName.trim()" @click="saveEdit"
                     >Enregistrer</BaseButton
                   >
                 </div>
+              </div>
+
+              <div class="mb-3 max-w-md">
+                <BaseInput label="Nom du plat" v-model="editName" placeholder="ex: Pâtes bolognaise" />
               </div>
 
               <div
