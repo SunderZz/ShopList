@@ -16,6 +16,10 @@ public class PlatIngredientDtoValidator : AbstractValidator<PlatIngredientDto>
 
         RuleFor(x => x.Unit)
             .MaximumLength(UnitMax).When(x => x.Unit is not null);
+
+        RuleFor(x => x.Unit)
+            .Must(BeAllowedUnit)
+            .WithMessage($"Unit must be one of: {AllowedUnitsList}.");
     }
 }
 

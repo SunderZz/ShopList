@@ -2,6 +2,15 @@
 
 namespace ListeDeCourses.Api.DTOs
 {
+    public record ListeItemQuantityDto
+    {
+        [Range(0.0, double.MaxValue)]
+        public double? Quantity { get; init; }
+
+        [MaxLength(DtoConstraints.UnitMax)]
+        public string? Unit { get; init; }
+    }
+
     public record ListeItemDto
     {
         public required string IngredientId { get; init; }
@@ -13,8 +22,9 @@ namespace ListeDeCourses.Api.DTOs
         public double? Quantity { get; init; }
 
         [MaxLength(DtoConstraints.UnitMax)]
-        [RegularExpression("^(g|kg|paquet|unité)$", ErrorMessage = "Unit must be one of: g, kg, paquet,unité.")]
         public string? Unit { get; init; }
+
+        public List<ListeItemQuantityDto>? Quantities { get; init; }
 
         [MaxLength(DtoConstraints.AisleMax)]
         public string? Aisle { get; init; }
@@ -32,6 +42,8 @@ namespace ListeDeCourses.Api.DTOs
         public required DateTime Date { get; init; }
 
         public required List<ListeItemDto> Items { get; init; }
+
+        public required List<ListeItemDto> ManualItems { get; init; }
 
         public required List<string> DishIds { get; init; }
 

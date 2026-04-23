@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Security.Claims;
 using ListeDeCourses.Api.Common;
 using ListeDeCourses.Api.DTOs;
@@ -10,8 +10,18 @@ namespace ListeDeCourses.Api.Services;
 
 public class ListeService
     : BaseService<ListeReadDto, ListeCreateDto, ListeUpdateDto, Liste>,
-      IItemCheckService<ListeReadDto> 
+      IItemCheckService<ListeReadDto>
 {
+    private sealed class AggregatedListItem
+    {
+        public required string IngredientId { get; init; }
+        public required string Name { get; set; }
+        public string? Aisle { get; set; }
+        public bool HasAmbiguousQuantity { get; set; }
+        public Dictionary<string, ListeItemQuantity> QuantitiesByUnit { get; } =
+            new(StringComparer.OrdinalIgnoreCase);
+    }
+
     private readonly ListeRepository _listes;
     private readonly PlatRepository _plats;
     private readonly IngredientRepository _ingredients;
@@ -44,12 +54,18 @@ public class ListeService
             "superuser",
             StringComparison.OrdinalIgnoreCase);
 
-    private void EnsureOwnership(Liste l)
+    private void EnsureOwnership(Liste list)
     {
         if (IsSuperUser()) return;
+
         var uid = GetCurrentUserId();
-        if (string.IsNullOrEmpty(uid) || !string.Equals(l.EffectiveOwnerId, uid, StringComparison.Ordinal))
-            throw new DomainException("Accès refusé à cette liste.", code: "LIST_FORBIDDEN", httpStatus: System.Net.HttpStatusCode.Forbidden);
+        if (string.IsNullOrEmpty(uid) || !string.Equals(list.EffectiveOwnerId, uid, StringComparison.Ordinal))
+        {
+            throw new DomainException(
+                "Acc\u00E8s refus\u00E9 \u00E0 cette liste.",
+                code: "LIST_FORBIDDEN",
+                httpStatus: System.Net.HttpStatusCode.Forbidden);
+        }
     }
 
     public override async Task<IEnumerable<ListeReadDto>> GetAllAsync(CancellationToken ct = default)
@@ -57,13 +73,22 @@ public class ListeService
         EnsureAuthenticated();
         if (IsSuperUser())
         {
-            return (await _listes.GetAllAsync(ct)).Select(MapToReadDto);
+            var lists = await _listes.GetAllAsync(ct);
+            foreach (var list in lists)
+                await HydrateLegacyManualItemsAsync(list, ct);
+            return lists.Select(MapToReadDto);
         }
 
         var uid = GetCurrentUserId()
-                  ?? throw new DomainException("Utilisateur non authentifié.", code: "AUTH_REQUIRED", httpStatus: System.Net.HttpStatusCode.Unauthorized);
+                  ?? throw new DomainException(
+                      "Utilisateur non authentifi\u00E9.",
+                      code: "AUTH_REQUIRED",
+                      httpStatus: System.Net.HttpStatusCode.Unauthorized);
 
-        return (await _listes.GetByOwnerIdAsync(uid, ct)).Select(MapToReadDto);
+        var ownedLists = await _listes.GetByOwnerIdAsync(uid, ct);
+        foreach (var list in ownedLists)
+            await HydrateLegacyManualItemsAsync(list, ct);
+        return ownedLists.Select(MapToReadDto);
     }
 
     public override async Task<ListeReadDto?> GetByIdAsync(string id, CancellationToken ct = default)
@@ -73,6 +98,7 @@ public class ListeService
         if (existing is null) return null;
 
         EnsureOwnership(existing);
+        await HydrateLegacyManualItemsAsync(existing, ct);
         return existing.ToReadDto();
     }
 
@@ -80,7 +106,10 @@ public class ListeService
     {
         EnsureAuthenticated();
         var uid = GetCurrentUserId()
-                  ?? throw new DomainException("Utilisateur non authentifié.", code: "AUTH_REQUIRED", httpStatus: System.Net.HttpStatusCode.Unauthorized);
+                  ?? throw new DomainException(
+                      "Utilisateur non authentifi\u00E9.",
+                      code: "AUTH_REQUIRED",
+                      httpStatus: System.Net.HttpStatusCode.Unauthorized);
 
         var entity = dto.ToModel();
         entity.OwnerId = uid;
@@ -98,16 +127,17 @@ public class ListeService
         if (existing is null) return default;
 
         EnsureOwnership(existing);
+        await HydrateLegacyManualItemsAsync(existing, ct);
 
-        if (dto.DishIds is not null) existing.DishIds = dto.DishIds;
+        if (dto.DishIds is not null)
+            existing.DishIds = dto.DishIds;
 
         await MaterializeAsync(
             existing,
             manualFromDto: dto.Items,
             dishIdsFromDto: dto.DishIds,
             keepCheckedFrom: existing,
-            ct: ct
-        );
+            ct: ct);
 
         await _repository.UpdateAsync(id, existing, ct);
         return existing.ToReadDto();
@@ -126,23 +156,28 @@ public class ListeService
     public async Task CascadeRemoveDishAsync(string dishId, CancellationToken ct = default)
     {
         var all = await _repository.GetAllAsync(ct);
-        foreach (var l in all.Where(x => x.DishIds.Contains(dishId)))
+        foreach (var list in all.Where(x => x.DishIds.Contains(dishId)))
         {
-            l.DishIds.RemoveAll(x => x == dishId);
-            await MaterializeAsync(l, manualFromDto: null, dishIdsFromDto: l.DishIds, keepCheckedFrom: l, ct);
-            await _repository.UpdateAsync(l.Id, l, ct);
+            list.DishIds.RemoveAll(x => x == dishId);
+            await MaterializeAsync(list, manualFromDto: null, dishIdsFromDto: list.DishIds, keepCheckedFrom: list, ct);
+            await _repository.UpdateAsync(list.Id, list, ct);
         }
     }
 
     public async Task CascadeRemoveIngredientAsync(string ingredientId, CancellationToken ct = default)
     {
         var all = await _repository.GetAllAsync(ct);
-        foreach (var l in all.Where(x => x.Items.Any(i => i.IngredientId == ingredientId)))
+        foreach (var list in all.Where(x =>
+                     x.Items.Any(i => i.IngredientId == ingredientId) ||
+                     x.ManualItems.Any(i => i.IngredientId == ingredientId)))
         {
-            l.Items.RemoveAll(i => i.IngredientId == ingredientId);
-            await _repository.UpdateAsync(l.Id, l, ct);
+            list.Items.RemoveAll(i => i.IngredientId == ingredientId);
+            list.ManualItems.RemoveAll(i => i.IngredientId == ingredientId);
+            await MaterializeAsync(list, manualFromDto: null, dishIdsFromDto: list.DishIds, keepCheckedFrom: list, ct);
+            await _repository.UpdateAsync(list.Id, list, ct);
         }
     }
+
     public async Task<ListeReadDto?> SetItemCheckedAsync(string listId, string ingredientId, bool isChecked, CancellationToken ct = default)
     {
         EnsureAuthenticated();
@@ -168,73 +203,66 @@ public class ListeService
         CancellationToken ct)
     {
         var checkedMap = keepCheckedFrom?.Items.ToDictionary(x => x.IngredientId, x => x.Checked) ?? new();
+
         if (manualFromDto is not null)
         {
-            foreach (var m in manualFromDto)
+            list.ManualItems = manualFromDto.Select(ToStoredManualItem).ToList();
+            foreach (var manual in manualFromDto)
             {
-                if (m.Checked.HasValue) checkedMap[m.IngredientId] = m.Checked.Value;
+                if (manual.Checked.HasValue)
+                    checkedMap[manual.IngredientId] = manual.Checked.Value;
             }
         }
 
         if (dishIdsFromDto is not null)
-            list.DishIds = dishIdsFromDto;
+            list.DishIds = dishIdsFromDto.Distinct(StringComparer.Ordinal).ToList();
 
         var acc = await AggregateFromDishesAsync(list.DishIds, ct);
 
-        if (manualFromDto is not null && manualFromDto.Count > 0)
-            await MergeManualAsync(acc, manualFromDto, ct);
+        if (list.ManualItems.Count > 0)
+            await MergeManualAsync(acc, list.ManualItems, ct);
 
         var final = new List<ListeItem>(acc.Count);
-        foreach (var kv in acc.Values.OrderBy(v => v.name, StringComparer.Create(CultureInfo.GetCultureInfo("fr-FR"), ignoreCase: true)))
+        foreach (var aggregate in acc.Values.OrderBy(
+                     value => value.Name,
+                     StringComparer.Create(CultureInfo.GetCultureInfo("fr-FR"), ignoreCase: true)))
         {
+            var quantities = BuildQuantities(aggregate);
+            var primary = quantities.Count == 1 ? quantities[0] : null;
+
             final.Add(new ListeItem
             {
-                IngredientId = kv.ingredientId,
-                IngredientName = kv.name,
-                Aisle = kv.aisle,
-                Quantity = kv.qty,
-                Unit = kv.unit,
-                Checked = checkedMap.TryGetValue(kv.ingredientId, out var c) ? c : false
+                IngredientId = aggregate.IngredientId,
+                IngredientName = aggregate.Name,
+                Aisle = aggregate.Aisle,
+                Quantity = primary?.Quantity,
+                Quantities = quantities,
+                Unit = primary?.Unit,
+                Checked = checkedMap.TryGetValue(aggregate.IngredientId, out var isChecked) && isChecked
             });
         }
 
         list.Items = final;
     }
 
-    private async Task<Dictionary<string, (string ingredientId, string name, string? aisle, double? qty, string? unit)>> AggregateFromDishesAsync(
+    private async Task<Dictionary<string, AggregatedListItem>> AggregateFromDishesAsync(
         List<string> dishIds,
         CancellationToken ct)
     {
-        var acc = new Dictionary<string, (string ingredientId, string name, string? aisle, double? qty, string? unit)>();
+        var acc = new Dictionary<string, AggregatedListItem>(StringComparer.Ordinal);
 
-        foreach (var dId in (dishIds ?? new()).Distinct())
+        foreach (var dishId in (dishIds ?? new()).Distinct())
         {
-            var dish = await _plats.GetByIdAsync(dId, ct);
+            var dish = await _plats.GetByIdAsync(dishId, ct);
             if (dish is null) continue;
 
-            foreach (var di in dish.Ingredients)
+            foreach (var dishIngredient in dish.Ingredients)
             {
-                var ing = await _ingredients.GetByIdAsync(di.IngredientId, ct);
-                if (ing is null) continue;
+                var ingredient = await _ingredients.GetByIdAsync(dishIngredient.IngredientId, ct);
+                if (ingredient is null) continue;
 
-                if (!acc.TryGetValue(di.IngredientId, out var cur))
-                {
-                    acc[di.IngredientId] = (di.IngredientId, ing.Name, ing.Aisle, di.Quantity, di.Unit);
-                }
-                else
-                {
-                    var curUnit = cur.unit?.Trim();
-                    var newUnit = di.Unit?.Trim();
-                    if (!string.IsNullOrEmpty(curUnit) && !string.IsNullOrEmpty(newUnit) &&
-                        string.Equals(curUnit, newUnit, StringComparison.OrdinalIgnoreCase))
-                    {
-                        acc[di.IngredientId] = (cur.ingredientId, cur.name, cur.aisle, (cur.qty ?? 0) + (di.Quantity ?? 0), curUnit);
-                    }
-                    else
-                    {
-                        acc[di.IngredientId] = (cur.ingredientId, cur.name, cur.aisle, null, null);
-                    }
-                }
+                var aggregate = GetOrCreateAggregate(acc, dishIngredient.IngredientId, ingredient.Name, ingredient.Aisle);
+                AddQuantity(aggregate, dishIngredient.Quantity, dishIngredient.Unit);
             }
         }
 
@@ -242,39 +270,132 @@ public class ListeService
     }
 
     private async Task MergeManualAsync(
-        Dictionary<string, (string ingredientId, string name, string? aisle, double? qty, string? unit)> acc,
-        List<ListeItemDto> manual,
+        Dictionary<string, AggregatedListItem> acc,
+        List<ListeItem> manual,
         CancellationToken ct)
     {
-        foreach (var m in manual)
+        foreach (var manualItem in manual)
         {
-            var ing = await _ingredients.GetByIdAsync(m.IngredientId, ct);
+            var ingredient = await _ingredients.GetByIdAsync(manualItem.IngredientId, ct);
 
-            var mName = ing?.Name ?? m.IngredientName;
-            var mAisle = ing?.Aisle ?? m.Aisle;
-            var mQty = m.Quantity;
-            var mUnit = string.IsNullOrWhiteSpace(m.Unit) ? null : m.Unit!.Trim();
-
-            if (!acc.TryGetValue(m.IngredientId, out var cur))
-            {
-                acc[m.IngredientId] = (m.IngredientId, mName, mAisle, mQty, mUnit);
-            }
-            else
-            {
-                var curUnit = cur.unit?.Trim();
-                if (!string.IsNullOrEmpty(curUnit) && !string.IsNullOrEmpty(mUnit) &&
-                    string.Equals(curUnit, mUnit, StringComparison.OrdinalIgnoreCase))
-                {
-                    acc[m.IngredientId] = (cur.ingredientId, mName, mAisle, (cur.qty ?? 0) + (mQty ?? 0), curUnit);
-                }
-                else if (cur.qty is null && cur.unit is null)
-                {
-                }
-                else
-                {
-                    acc[m.IngredientId] = (cur.ingredientId, mName, mAisle, null, null);
-                }
-            }
+            var manualName = ingredient?.Name ?? manualItem.IngredientName;
+            var manualAisle = ingredient?.Aisle ?? manualItem.Aisle;
+            var aggregate = GetOrCreateAggregate(acc, manualItem.IngredientId, manualName, manualAisle);
+            aggregate.Name = manualName;
+            aggregate.Aisle = manualAisle;
+            AddQuantity(aggregate, manualItem.Quantity, manualItem.Unit);
         }
     }
+
+    private static AggregatedListItem GetOrCreateAggregate(
+        Dictionary<string, AggregatedListItem> acc,
+        string ingredientId,
+        string name,
+        string? aisle)
+    {
+        if (acc.TryGetValue(ingredientId, out var existing))
+            return existing;
+
+        var created = new AggregatedListItem
+        {
+            IngredientId = ingredientId,
+            Name = name,
+            Aisle = aisle,
+        };
+        acc[ingredientId] = created;
+        return created;
+    }
+
+    private static void AddQuantity(AggregatedListItem aggregate, double? quantity, string? unit)
+    {
+        if (!UnitCatalog.TryConvertToCanonical(quantity, unit, out var canonicalQuantity, out var canonicalUnit))
+        {
+            aggregate.HasAmbiguousQuantity = true;
+            return;
+        }
+
+        if (!aggregate.QuantitiesByUnit.TryGetValue(canonicalUnit, out var existing))
+        {
+            aggregate.QuantitiesByUnit[canonicalUnit] = new ListeItemQuantity
+            {
+                Quantity = canonicalQuantity,
+                Unit = canonicalUnit
+            };
+            return;
+        }
+
+        existing.Quantity = (existing.Quantity ?? 0) + canonicalQuantity;
+    }
+
+    private static List<ListeItemQuantity> BuildQuantities(AggregatedListItem aggregate)
+    {
+        if (aggregate.HasAmbiguousQuantity)
+            return new();
+
+        return aggregate.QuantitiesByUnit.Values
+            .OrderBy(quantity => UnitCatalog.GetSortOrder(quantity.Unit))
+            .ThenBy(quantity => quantity.Unit, StringComparer.OrdinalIgnoreCase)
+            .Select(quantity => new ListeItemQuantity
+            {
+                Quantity = quantity.Quantity,
+                Unit = quantity.Unit
+            })
+            .ToList();
+    }
+
+    private static ListeItem ToStoredManualItem(ListeItemDto item) => new()
+    {
+        IngredientId = item.IngredientId,
+        IngredientName = item.IngredientName,
+        Quantity = item.Quantity,
+        Quantities = new(),
+        Unit = UnitCatalog.Normalize(item.Unit),
+        Aisle = item.Aisle,
+        Checked = item.Checked ?? false
+    };
+
+    private async Task HydrateLegacyManualItemsAsync(Liste list, CancellationToken ct)
+    {
+        if (list.ManualItems.Count > 0 || list.Items.Count == 0)
+            return;
+
+        var aggregateByIngredientId = await AggregateFromDishesAsync(list.DishIds, ct);
+        var inferred = new List<ListeItem>();
+
+        foreach (var item in list.Items)
+        {
+            if (!aggregateByIngredientId.TryGetValue(item.IngredientId, out var aggregate))
+            {
+                inferred.Add(ToLegacyManualItem(item, item.Quantity, item.Unit));
+                continue;
+            }
+
+            var dishQuantities = BuildQuantities(aggregate);
+            if (dishQuantities.Count != 1 || item.Quantity is null || string.IsNullOrWhiteSpace(item.Unit))
+                continue;
+
+            var dishQuantity = dishQuantities[0];
+            if (!string.Equals(dishQuantity.Unit, item.Unit, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var remainingQuantity = item.Quantity.Value - (dishQuantity.Quantity ?? 0);
+            if (remainingQuantity <= 0) continue;
+
+            inferred.Add(ToLegacyManualItem(item, remainingQuantity, item.Unit));
+        }
+
+        if (inferred.Count > 0)
+            list.ManualItems = inferred;
+    }
+
+    private static ListeItem ToLegacyManualItem(ListeItem item, double? quantity, string? unit) => new()
+    {
+        IngredientId = item.IngredientId,
+        IngredientName = item.IngredientName,
+        Quantity = quantity,
+        Quantities = new(),
+        Unit = UnitCatalog.Normalize(unit),
+        Aisle = item.Aisle,
+        Checked = item.Checked
+    };
 }

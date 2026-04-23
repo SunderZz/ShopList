@@ -39,10 +39,16 @@ export interface Dish {
   ingredients: DishIngredientRef[]
 }
 
+export interface ShoppingListQuantity {
+  quantity: number | null
+  unit: string | null
+}
+
 export interface ShoppingListItem {
   ingredientId: string
   ingredientName: string
   quantity: number | null
+  quantities?: ShoppingListQuantity[] | null
   unit: string | null
   aisle: string | null
   checked?: boolean | null
@@ -53,6 +59,7 @@ export interface ShoppingList {
   name: string
   date: string
   items: ShoppingListItem[]
+  manualItems?: ShoppingListItem[]
   dishIds: string[]
   ownerId: string
 }

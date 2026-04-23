@@ -23,6 +23,9 @@ public static class Program
             ("standard user cannot mutate a foreign shopping list", StandardUserCannotMutateForeignShoppingList),
             ("standard user can check an item on an owned shopping list", StandardUserCanCheckOwnedShoppingListItem),
             ("created shopping list is attached to the current user", CreatedShoppingListIsAttachedToCurrentUser),
+            ("compatible units are converted before shopping list aggregation", CompatibleUnitsAreConvertedBeforeShoppingListAggregation),
+            ("incompatible units stay explicit in shopping list aggregation", IncompatibleUnitsStayExplicitInShoppingListAggregation),
+            ("manual items are preserved separately from dish aggregation", ManualItemsArePreservedSeparatelyFromDishAggregation),
         };
 
         var failures = 0;
@@ -150,18 +153,133 @@ public static class Program
         Assert.Equal(null, stored.LegacyUserId);
     }
 
+    private static async Task CompatibleUnitsAreConvertedBeforeShoppingListAggregation()
+    {
+        var service = CreateService(
+            new InMemoryListeRepository(Array.Empty<Liste>()),
+            User("user-a"),
+            plats:
+            [
+                Dish("dish-a", IngredientRef("ingredient-a", 500, "g")),
+                Dish("dish-b", IngredientRef("ingredient-a", 1, "kg")),
+            ],
+            ingredients:
+            [
+                Ingredient("ingredient-a", "Tomate", "Legumes"),
+            ]);
+
+        var result = await service.CreateAsync(new ListeCreateDto
+        {
+            Name = "courses",
+            DishIds = new List<string> { "dish-a", "dish-b" },
+            Items = new List<ListeItemDto>(),
+        });
+
+        var item = result.Items.Single();
+        Assert.Equal(1500d, item.Quantity);
+        Assert.Equal("g", item.Unit);
+        Assert.Equal(1, item.Quantities?.Count ?? 0);
+        Assert.Equal(1500d, item.Quantities![0].Quantity);
+        Assert.Equal("g", item.Quantities[0].Unit);
+    }
+
+    private static async Task IncompatibleUnitsStayExplicitInShoppingListAggregation()
+    {
+        var service = CreateService(
+            new InMemoryListeRepository(Array.Empty<Liste>()),
+            User("user-a"),
+            plats:
+            [
+                Dish("dish-a", IngredientRef("ingredient-a", 2, UnitCatalog.PieceUnit)),
+                Dish("dish-b", IngredientRef("ingredient-a", 300, "g")),
+            ],
+            ingredients:
+            [
+                Ingredient("ingredient-a", "Tomate", "Legumes"),
+            ]);
+
+        var result = await service.CreateAsync(new ListeCreateDto
+        {
+            Name = "courses",
+            DishIds = new List<string> { "dish-a", "dish-b" },
+            Items = new List<ListeItemDto>(),
+        });
+
+        var item = result.Items.Single();
+        Assert.Equal<double?>(null, item.Quantity);
+        Assert.Equal<string?>(null, item.Unit);
+        var quantities = item.Quantities ?? new List<ListeItemQuantityDto>();
+        Assert.True(quantities.Count == 2, "Expected one explicit quantity per incompatible unit family.");
+        Assert.True(quantities.Any(q => q.Quantity == 300d && q.Unit == "g"), "Expected the mass quantity to remain explicit.");
+        Assert.True(quantities.Any(q => q.Quantity == 2d && q.Unit == UnitCatalog.PieceUnit), "Expected the piece quantity to remain explicit.");
+    }
+
+    private static async Task ManualItemsArePreservedSeparatelyFromDishAggregation()
+    {
+        var lists = new InMemoryListeRepository(Array.Empty<Liste>());
+        var service = CreateService(
+            lists,
+            User("user-a"),
+            plats:
+            [
+                Dish("dish-a", IngredientRef("ingredient-a", 300, "g")),
+            ],
+            ingredients:
+            [
+                Ingredient("ingredient-a", "Tomate", "Legumes"),
+            ]);
+
+        var result = await service.CreateAsync(new ListeCreateDto
+        {
+            Name = "courses",
+            DishIds = new List<string> { "dish-a" },
+            Items =
+            [
+                new ListeItemDto
+                {
+                    IngredientId = "ingredient-a",
+                    IngredientName = "Tomate",
+                    Quantity = 200,
+                    Unit = "g",
+                    Aisle = "Legumes",
+                    Checked = false,
+                }
+            ],
+        });
+
+        var item = result.Items.Single();
+        Assert.Equal(500d, item.Quantity);
+        Assert.Equal("g", item.Unit);
+        Assert.Equal(1, result.ManualItems.Count);
+        Assert.Equal(200d, result.ManualItems[0].Quantity);
+        Assert.Equal("g", result.ManualItems[0].Unit);
+
+        var stored = lists.Stored(result.Id);
+        Assert.NotNull(stored, "Expected the created shopping list to be stored.");
+        Assert.Equal(1, stored!.ManualItems.Count);
+        Assert.Equal(200d, stored.ManualItems[0].Quantity);
+        Assert.Equal("g", stored.ManualItems[0].Unit);
+    }
+
     private static ListeService CreateService(IEnumerable<Liste> seed, ClaimsPrincipal? principal) =>
         CreateService(new InMemoryListeRepository(seed), principal);
 
     private static ListeService CreateService(InMemoryListeRepository lists, ClaimsPrincipal? principal)
+        => CreateService(lists, principal, plats: null, ingredients: null);
+
+    private static ListeService CreateService(
+        InMemoryListeRepository lists,
+        ClaimsPrincipal? principal,
+        IEnumerable<Plat>? plats,
+        IEnumerable<Ingredient>? ingredients)
     {
         var context = new DefaultHttpContext();
         if (principal is not null) context.User = principal;
 
         return new ListeService(
             lists,
-            new InMemoryPlatRepository(Array.Empty<Plat>()),
-            new InMemoryIngredientRepository(Array.Empty<Ingredient>()),
+            new InMemoryPlatRepository(plats ?? Array.Empty<Plat>()),
+            new InMemoryIngredientRepository(ingredients ?? Array.Empty<Ingredient>()),
             new HttpContextAccessor { HttpContext = context });
     }
 
@@ -184,6 +302,7 @@ public static class Program
             OwnerId = ownerId,
             LegacyUserId = legacyUserId,
             Items = items?.Select(CloneItem).ToList() ?? new List<ListeItem>(),
+            ManualItems = new List<ListeItem>(),
             DishIds = new List<string>(),
         };
 
@@ -193,6 +312,14 @@ public static class Program
             IngredientId = ingredientId,
             IngredientName = ingredientId,
             Quantity = 1,
+            Quantities =
+            [
+                new ListeItemQuantity
+                {
+                    Quantity = 1,
+                    Unit = "g"
+                }
+            ],
             Unit = "g",
             Aisle = "test",
             Checked = isChecked,
@@ -208,6 +335,7 @@ public static class Program
             LegacyUserId = source.LegacyUserId,
             DishIds = source.DishIds.ToList(),
             Items = source.Items.Select(CloneItem).ToList(),
+            ManualItems = source.ManualItems.Select(CloneItem).ToList(),
         };
 
     private static ListeItem CloneItem(ListeItem source) =>
@@ -216,9 +344,41 @@ public static class Program
             IngredientId = source.IngredientId,
             IngredientName = source.IngredientName,
             Quantity = source.Quantity,
+            Quantities = source.Quantities.Select(CloneQuantity).ToList(),
             Unit = source.Unit,
             Aisle = source.Aisle,
             Checked = source.Checked,
+        };
+
+    private static ListeItemQuantity CloneQuantity(ListeItemQuantity source) =>
+        new()
+        {
+            Quantity = source.Quantity,
+            Unit = source.Unit,
+        };
+
+    private static Plat Dish(string id, params PlatIngredient[] ingredients) =>
+        new()
+        {
+            Id = id,
+            Name = id,
+            Ingredients = ingredients.ToList(),
+        };
+
+    private static PlatIngredient IngredientRef(string ingredientId, double quantity, string unit) =>
+        new()
+        {
+            IngredientId = ingredientId,
+            Quantity = quantity,
+            Unit = unit,
+        };
+
+    private static Ingredient Ingredient(string id, string name, string? aisle) =>
+        new()
+        {
+            Id = id,
+            Name = name,
+            Aisle = aisle,
         };
 
     private static class Assert

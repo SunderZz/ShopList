@@ -22,6 +22,9 @@ public class Liste
     [BsonElement("items")]
     public List<ListeItem> Items { get; set; } = new();
 
+    [BsonElement("manualItems")]
+    public List<ListeItem> ManualItems { get; set; } = new();
+
     [BsonElement("dishIds")]
     public List<string> DishIds { get; set; } = new();
 
@@ -56,6 +59,9 @@ public class ListeItem
     [BsonElement("quantity")]
     public double? Quantity { get; set; }
 
+    [BsonElement("quantities")]
+    public List<ListeItemQuantity> Quantities { get; set; } = new();
+
     [MaxLength(50)]
     [BsonElement("unit")]
     public string? Unit { get; set; }
@@ -66,4 +72,16 @@ public class ListeItem
 
     [BsonElement("checked")]
     public bool Checked { get; set; }
+}
+
+[BsonIgnoreExtraElements]
+public class ListeItemQuantity
+{
+    [Range(0.0, double.MaxValue)]
+    [BsonElement("quantity")]
+    public double? Quantity { get; set; }
+
+    [MaxLength(50)]
+    [BsonElement("unit")]
+    public string? Unit { get; set; }
 }
