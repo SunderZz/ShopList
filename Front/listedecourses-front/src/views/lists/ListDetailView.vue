@@ -11,6 +11,7 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import QtyUnitInput from '@/components/ui/QtyUnitInput.vue'
 import type { ShoppingList, ShoppingListItem, Ingredient, Dish, User } from '@/api/types'
 import { useMapById } from '@/composables/useMapById'
+import { formatQuantitySummary, UNIT_OPTIONS } from '@/utils/units'
 
 const route = useRoute()
 const router = useRouter()
@@ -145,7 +146,6 @@ const selectedDishIds = ref<string[]>([])
 const selectedIngredientIds = ref<string[]>([])
 type IngMeta = { quantity: number | null; unit: string | null }
 const selectedIngredientMetaById = ref<Record<string, IngMeta>>({})
-const UNIT_OPTIONS = ['kg', 'g', 'paquet', 'unité']
 
 const pickerErrors = ref<Record<string, string>>({})
 const globalPickerError = ref<string | null>(null)
@@ -191,14 +191,7 @@ function openPicker() {
 
   selectedDishIds.value = [...l.dishIds]
 
-  const agg = aggregateFromDishIds(l.dishIds)
-  const manualNow = l.items.filter((it) => {
-    const a = agg[it.ingredientId]
-    if (!a) return true
-    const unitEqual = (a.unit?.toLowerCase() ?? null) === (it.unit?.toLowerCase() ?? null)
-    const qtyEqual = (a.qty ?? null) === (it.quantity ?? null)
-    return !(unitEqual && qtyEqual)
-  })
+  const manualNow = l.manualItems?.length ? l.manualItems : inferLegacyManualItems(l)
 
   selectedIngredientIds.value = manualNow.map((it) => it.ingredientId)
   selectedIngredientMetaById.value = {}
@@ -212,6 +205,24 @@ function openPicker() {
   pickerErrors.value = {}
   globalPickerError.value = null
   showPicker.value = true
+}
+
+function inferLegacyManualItems(list: ShoppingList) {
+  const agg = aggregateFromDishIds(list.dishIds)
+  return list.items.filter((it) => {
+    const a = agg[it.ingredientId]
+    if (!a) return true
+    const unitEqual = (a.unit?.toLowerCase() ?? null) === (it.unit?.toLowerCase() ?? null)
+    const qtyEqual = (a.qty ?? null) === (it.quantity ?? null)
+    return !(unitEqual && qtyEqual)
+  })
+}
+
+function itemQuantitySummary(item: ShoppingListItem) {
+  return formatQuantitySummary(item.quantities, {
+    quantity: item.quantity ?? null,
+    unit: item.unit ?? null,
+  })
 }
 function cancelPicker() {
   showPicker.value = false
@@ -328,11 +339,8 @@ async function removeList() {
               />
               <span class="font-medium">{{ r.ingredientName }}</span>
             </label>
-            <div class="text-sm text-gray-600">
-              <template v-if="r.quantity !== null">
-                {{ r.quantity }} <span v-if="r.unit">&nbsp;{{ r.unit }}</span>
-              </template>
-              <template v-else>—</template>
+            <div class="text-sm text-gray-600 text-right">
+              {{ itemQuantitySummary(r) }}
             </div>
           </li>
         </ul>

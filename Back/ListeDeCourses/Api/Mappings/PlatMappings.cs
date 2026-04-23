@@ -1,4 +1,5 @@
 using System.Linq;
+using ListeDeCourses.Api.Common;
 using ListeDeCourses.Api.DTOs;
 using ListeDeCourses.Api.Models;
 
@@ -37,6 +38,6 @@ public static class PlatMappings
     {
         IngredientId = d.IngredientId,
         Quantity     = d.Quantity,
-        Unit         = d.Unit
+        Unit         = UnitCatalog.Normalize(d.Unit)
     };
 }

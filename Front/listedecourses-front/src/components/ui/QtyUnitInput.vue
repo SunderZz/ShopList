@@ -1,25 +1,26 @@
 <script setup lang="ts">
 import { withDefaults, defineProps, defineEmits, computed } from 'vue'
+import { UNIT_OPTIONS } from '@/utils/units'
 
 type Model = { quantity: number | null; unit: string | null }
 
 const props = withDefaults(defineProps<{
   modelValue?: Model
-  units?: string[]
+  units?: readonly string[]
   inputClass?: string
   selectClass?: string
   disabled?: boolean
   placeholderQty?: string
 }>(), {
   modelValue: () => ({ quantity: null, unit: null }),
-  units: () => ['g', 'kg', 'paquet','unité'],
+  units: () => [...UNIT_OPTIONS],
   inputClass: 'w-full h-10 rounded-lg border px-2 text-sm',
   selectClass: 'w-full h-10 rounded-lg border px-2 text-sm',
   disabled: false,
-  placeholderQty: 'Qté',
+  placeholderQty: 'Qte',
 })
 
-const emit = defineEmits<{ (e:'update:modelValue', v: Model): void }>()
+const emit = defineEmits<{ (e: 'update:modelValue', v: Model): void }>()
 const val = computed<Model>({
   get: () => props.modelValue,
   set: (v) => emit('update:modelValue', v),

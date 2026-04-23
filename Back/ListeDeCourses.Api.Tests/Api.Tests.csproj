@@ -14,4 +14,9 @@
     <ProjectReference Include="..\ListeDeCourses\Api\ApiList.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="MongoDB.Driver" Version="3.4.2" />
+  </ItemGroup>
+
 </Project>

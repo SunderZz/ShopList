@@ -4,7 +4,7 @@ Ce document découpe le travail en jalons courts. Chaque sprint doit produire un
 
 ## Avancement global
 
-Avancement: `29/61 tâches - 48%`
+Avancement: `35/62 tâches - 56%`
 
 Une tâche cochée compte comme terminée uniquement si elle est implémentée, relue et vérifiée. Les critères d'acceptation servent à valider le sprint, mais ne sont pas comptés comme tâches.
 
@@ -138,16 +138,24 @@ Avancement: `8/9 tâches - 89%`
 
 Objectif: additionner correctement les ingrédients communs même si les plats utilisent des unités compatibles différentes.
 
-Avancement: `0/6 tâches - 0%`
+Avancement: `6/6 tâches - 100%`
 
 ### Tâches
 
-- [ ] Définir un modèle d'unités canonique.
-- [ ] Ajouter une table ou un service de conversion pour les unités compatibles.
-- [ ] Convertir les quantités vers une unité canonique avant agrégation.
-- [ ] Gérer les cas non convertibles avec une règle explicite.
-- [ ] Aligner front et back sur la même liste d'unités.
-- [ ] Ajouter des tests sur les conversions et l'agrégation de listes.
+- [x] Définir un modèle d'unités canonique.
+- [x] Ajouter une table ou un service de conversion pour les unités compatibles.
+- [x] Convertir les quantités vers une unité canonique avant agrégation.
+- [x] Gérer les cas non convertibles avec une règle explicite.
+- [x] Aligner front et back sur la même liste d'unités.
+- [x] Ajouter des tests sur les conversions et l'agrégation de listes.
+
+### Notes de vérification
+
+- Le back centralise désormais les unités autorisées dans un catalogue commun: `g`, `kg`, `ml`, `cl`, `l`, `paquet`, `unité`.
+- L'agrégation convertit les masses vers `g` et les volumes vers `ml` avant addition.
+- Quand un ingrédient apparaît avec des familles d'unités incompatibles, le détail de liste affiche plusieurs quantités explicites au lieu de masquer l'information.
+- Les listes conservent maintenant les ingrédients manuels séparément des plats sélectionnés, ce qui évite les doubles comptages lors de l'édition.
+- Vérifications passées: `dotnet run --project Back/ListeDeCourses.Api.Tests/Api.Tests.csproj --no-restore`, `npm run typecheck`, `npm run build`.
 
 ### Critères d'acceptation
 
@@ -179,13 +187,14 @@ Avancement: `0/5 tâches - 0%`
 
 Objectif: rendre l'interface plus fiable et confortable sur desktop et mobile.
 
-Avancement: `0/9 tâches - 0%`
+Avancement: `0/10 tâches - 0%`
 
 ### Tâches
 
 - [ ] Tester chaque écran sur mobile: accueil, login/register, ingrédients, plats, listes, détail liste, utilisateurs admin.
 - [ ] Corriger les débordements, boutons trop petits, modales difficiles à utiliser.
 - [ ] Corriger les tableaux/listes responsive: dernière ligne visible sur mobile, pas de barre horizontale inutile sur desktop, largeur adaptée à la fenêtre.
+- [ ] Afficher dans le détail d'une liste les plats sélectionnés pour générer cette liste.
 - [ ] Ajouter un bouton de création sur les pages ingrédients, plats et listes pour ouvrir une modale dédiée.
 - [ ] Ajouter un bouton Annuler dans les modales de création d'ingrédient, plat et liste pour fermer la création sans enregistrer.
 - [ ] Supprimer le blocage du zoom mobile sauf justification forte.
@@ -198,6 +207,7 @@ Avancement: `0/9 tâches - 0%`
 - Toutes les fonctions principales sont utilisables sur écran mobile.
 - Aucun texte ou bouton important ne déborde.
 - Les dernières lignes des tableaux/listes restent accessibles sur mobile.
+- Le détail d'une liste affiche aussi les plats sélectionnés, pas seulement les ingrédients agrégés.
 - Les vues desktop s'adaptent à la largeur disponible sans scroll horizontal inutile.
 - Les créations d'ingrédient, plat et liste passent par une modale ouvrable et annulable.
 - Les erreurs API sont visibles et compréhensibles.

@@ -72,7 +72,7 @@ public class PlatService : BaseService<PlatReadDto, PlatCreateDto, PlatUpdateDto
             {
                 IngredientId = i.IngredientId,
                 Quantity = i.Quantity,
-                Unit = i.Unit
+                Unit = UnitCatalog.Normalize(i.Unit)
             }).ToList();
         }
 

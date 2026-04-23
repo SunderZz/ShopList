@@ -30,6 +30,11 @@ Ce document décrit les comportements attendus avant implémentation.
 - Un utilisateur standard ne peut pas accéder à une liste d'un autre utilisateur, même avec l'id direct.
 - Un administrateur peut gérer toutes les listes.
 
+### Affichage
+
+- Le détail d'une liste doit afficher les plats sélectionnés pour générer cette liste.
+- L'utilisateur doit pouvoir distinguer les plats sélectionnés des ingrédients ajoutés manuellement.
+
 ## Plats
 
 ### Unicité

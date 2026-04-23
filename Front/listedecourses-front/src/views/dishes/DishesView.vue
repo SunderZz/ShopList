@@ -11,11 +11,11 @@ import { useFlash } from '@/composables/useFlash'
 import { useMapById } from '@/composables/useMapById'
 import type { Dish, Ingredient } from '@/api/types'
 import { getApiErrorMessage } from '@/api/errors'
+import { UNIT_OPTIONS } from '@/utils/units'
 
 const dishes = useDishesStore()
 const ingredients = useIngredientsStore()
 
-const UNIT_OPTIONS = ['g', 'kg', 'paquet','unité']
 
 const createName = ref<string>('')
 const createError = ref<string | null>(null)

@@ -1,14 +1,14 @@
+using ListeDeCourses.Api.Common;
 using ListeDeCourses.Api.DTOs;
 
 namespace ListeDeCourses.Api.Validators;
 
 internal static class ValidationHelpers
 {
-    private static readonly HashSet<string> AllowedUnits =
-        new(StringComparer.OrdinalIgnoreCase) { "g", "kg", "paquet","unité" };
-
     public static bool BeAllowedUnit(string? unit)
-        => unit is null || unit.Trim().Length == 0 || AllowedUnits.Contains(unit.Trim());
+        => UnitCatalog.IsAllowed(unit);
+
+    public static string AllowedUnitsList => string.Join(", ", UnitCatalog.AllowedUnits);
 
     public static int NameMin => DtoConstraints.NameMin;
     public static int NameMax => DtoConstraints.NameMax;
