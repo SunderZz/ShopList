@@ -7,6 +7,7 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import DataTable from '@/components/ui/DataTable.vue'
 import QtyUnitInput from '@/components/ui/QtyUnitInput.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
+import IconGlyph from '@/components/ui/IconGlyph.vue'
 import { useFlash } from '@/composables/useFlash'
 import { useMapById } from '@/composables/useMapById'
 import type { Dish, Ingredient } from '@/api/types'
@@ -20,6 +21,7 @@ const ingredients = useIngredientsStore()
 const createName = ref<string>('')
 const createSourceUrl = ref<string>('')
 const createError = ref<string | null>(null)
+const showCreateModal = ref(false)
 const dishSearch = ref('')
 type QtyUnit = { quantity: number | null; unit: string | null }
 
@@ -89,6 +91,28 @@ const filteredIngredientsCreate = computed(() => {
     (i) => i.name.toLowerCase().includes(q) || i.aisle?.toLowerCase().includes(q)
   )
 })
+
+function resetCreateForm() {
+  createName.value = ''
+  createSourceUrl.value = ''
+  selectedCreateIds.value = []
+  createMetaById.value = {}
+  createPickerErrors.value = {}
+  globalCreatePickerError.value = null
+  createError.value = null
+  ingSearchCreate.value = ''
+}
+
+function openCreateModal() {
+  resetCreateForm()
+  showCreateModal.value = true
+}
+
+function cancelCreateModal() {
+  showCreateModal.value = false
+  showCreatePicker.value = false
+  resetCreateForm()
+}
 
 function openCreatePicker() {
   showCreatePicker.value = true
@@ -164,12 +188,8 @@ async function createDish() {
     await nextTick()
     flashRow(createdId)
 
-    createName.value = ''
-    createSourceUrl.value = ''
-    selectedCreateIds.value = []
-    createMetaById.value = {}
-    createPickerErrors.value = {}
-    globalCreatePickerError.value = null
+    showCreateModal.value = false
+    resetCreateForm()
   } catch (error: unknown) {
     createError.value = getApiErrorMessage(error, 'Impossible de créer ce plat.')
   }
@@ -359,11 +379,51 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="container mx-auto px-4 safe-pt safe-pb py-8 space-y-8">
-    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-4">
-      <h2 class="text-xl md:text-lg font-semibold">Créer un plat</h2>
+  <section class="container mx-auto px-4 safe-pt safe-pb py-8 space-y-6">
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <h1 class="text-3xl md:text-2xl font-semibold tracking-tight">Plats</h1>
+        <p class="mt-1 text-sm text-gray-500 md:hidden">{{ dishes.items.length }} plat(s)</p>
+      </div>
 
-      <div class="grid gap-3 items-end md:grid-cols-[1fr_1fr_auto_auto]">
+      <div class="flex items-center gap-2">
+        <span
+          class="hidden md:inline-flex items-center gap-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-full px-3 py-1"
+        >
+          {{ dishes.items.length }} plat(s)
+        </span>
+        <BaseButton
+          class="!w-auto !h-10 !rounded-xl !px-4 !shadow-sm hover:!shadow-md"
+          @click="openCreateModal"
+        >
+          <span class="inline-flex items-center gap-2">
+            <IconGlyph name="plus" />
+            Creer
+          </span>
+        </BaseButton>
+      </div>
+    </div>
+
+    <BaseModal
+      :show="showCreateModal"
+      panel-class="relative w-full md:w-[720px] bg-white rounded-t-2xl md:rounded-xl shadow-xl p-4 max-h-[calc(100vh-2rem)] overflow-y-auto"
+      @close="cancelCreateModal"
+    >
+      <div class="space-y-4">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-xl md:text-lg font-semibold">Creer un plat</h2>
+          <BaseButton
+            type="button"
+            class="!bg-gray-200 !text-gray-800 !h-9 !w-9 !p-0 !rounded-lg"
+            title="Annuler"
+            aria-label="Annuler"
+            @click="cancelCreateModal"
+          >
+            <IconGlyph name="x" />
+          </BaseButton>
+        </div>
+
+      <div class="grid gap-3 items-end md:grid-cols-[1fr_1fr_auto_auto_auto]">
         <BaseInput label="Nom du plat" v-model="createName" placeholder="ex: Pâtes bolognaise" />
         <BaseInput
           label="Lien recette"
@@ -379,6 +439,15 @@ onMounted(() => {
             @click="openCreatePicker"
           >
             Choisir les ingrédients
+          </BaseButton>
+        </div>
+        <div class="text-right md:col-span-1">
+          <BaseButton
+            type="button"
+            class="!bg-gray-200 !text-gray-800 !h-11 !rounded-xl !px-5 !shadow-sm hover:!shadow-md"
+            @click="cancelCreateModal"
+          >
+            Annuler
           </BaseButton>
         </div>
         <div class="text-right md:col-span-1">
@@ -440,7 +509,8 @@ onMounted(() => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </BaseModal>
 
     <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
       <div class="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
@@ -460,6 +530,9 @@ onMounted(() => {
     </div>
 
     <div class="md:hidden space-y-3">
+      <div v-if="dishes.loading" class="bg-white border border-gray-200 rounded-xl p-4 text-sm text-gray-500">
+        Chargement...
+      </div>
       <template v-for="d in filteredDishes" :key="d.id">
       <div
         class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"
@@ -816,7 +889,7 @@ onMounted(() => {
     >
       <div class="flex-1 bg-black/40" @click="cancelCreatePicker"></div>
       <div
-        class="mt-auto w-full bg-white shadow-2xl flex flex-col rounded-t-2xl max-h-[85vh] safe-pb md:max-h-none md:h-full md:rounded-none md:w/[520px] md:ml-auto"
+        class="mt-auto w-full bg-white shadow-2xl flex flex-col rounded-t-2xl max-h-[85vh] safe-pb md:max-h-none md:h-full md:rounded-none md:w-[520px] md:ml-auto"
       >
         <div class="border-b px-4 py-3 flex items-center justify-between sticky top-0 bg-white">
           <div class="font-medium">Choisir les ingrédients du plat</div>

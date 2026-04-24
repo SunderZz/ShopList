@@ -4,7 +4,7 @@ Ce document découpe le travail en jalons courts. Chaque sprint doit produire un
 
 ## Avancement global
 
-Avancement: `42/62 tâches - 68%`
+Avancement: `51/62 tâches - 82%`
 
 Une tâche cochée compte comme terminée uniquement si elle est implémentée, relue et vérifiée. Les critères d'acceptation servent à valider le sprint, mais ne sont pas comptés comme tâches.
 
@@ -194,20 +194,31 @@ Avancement: `5/5 tâches - 100%`
 
 Objectif: rendre l'interface plus fiable et confortable sur desktop et mobile.
 
-Avancement: `0/10 tâches - 0%`
+Avancement: `9/10 tâches - 90%`
 
 ### Tâches
 
 - [ ] Tester chaque écran sur mobile: accueil, login/register, ingrédients, plats, listes, détail liste, utilisateurs admin.
-- [ ] Corriger les débordements, boutons trop petits, modales difficiles à utiliser.
-- [ ] Corriger les tableaux/listes responsive: dernière ligne visible sur mobile, pas de barre horizontale inutile sur desktop, largeur adaptée à la fenêtre.
-- [ ] Afficher dans le détail d'une liste les plats sélectionnés pour générer cette liste.
-- [ ] Ajouter un bouton de création sur les pages ingrédients, plats et listes pour ouvrir une modale dédiée.
-- [ ] Ajouter un bouton Annuler dans les modales de création d'ingrédient, plat et liste pour fermer la création sans enregistrer.
-- [ ] Supprimer le blocage du zoom mobile sauf justification forte.
-- [ ] Améliorer les états loading, empty, error.
-- [ ] Ajouter confirmations cohérentes sur suppressions sensibles.
-- [ ] Réduire les SVG dupliqués ou introduire une petite couche d'icônes réutilisables.
+- [x] Corriger les débordements, boutons trop petits, modales difficiles à utiliser.
+- [x] Corriger les tableaux/listes responsive: dernière ligne visible sur mobile, pas de barre horizontale inutile sur desktop, largeur adaptée à la fenêtre.
+- [x] Afficher dans le détail d'une liste les plats sélectionnés pour générer cette liste.
+- [x] Ajouter un bouton de création sur les pages ingrédients, plats et listes pour ouvrir une modale dédiée.
+- [x] Ajouter un bouton Annuler dans les modales de création d'ingrédient, plat et liste pour fermer la création sans enregistrer.
+- [x] Supprimer le blocage du zoom mobile sauf justification forte.
+- [x] Améliorer les états loading, empty, error.
+- [x] Ajouter confirmations cohérentes sur suppressions sensibles.
+- [x] Réduire les SVG dupliqués ou introduire une petite couche d'icônes réutilisables.
+
+### Notes de vérification
+
+- Les créations d'ingrédient, plat et liste passent par des modales dédiées avec annulation explicite.
+- Les vues ingrédients, listes, plats et utilisateurs affichent des états loading/empty/error plus lisibles et des cartes mobiles quand le tableau n'est pas adapté.
+- Le détail de liste affiche maintenant les plats sélectionnés et leurs liens source éventuels.
+- Le blocage `maximum-scale=1, user-scalable=no` a été retiré du runtime front.
+- Les suppressions utilisateur passent maintenant par une confirmation modale comme les suppressions sensibles existantes.
+- Les icônes d'action et de navigation passent par `IconGlyph.vue` pour réduire les SVG copiés.
+- Vérifications passées: `npm run typecheck`, `npm run lint`, `npm run build`, `dotnet run --project Back/ListeDeCourses.Api.Tests/Api.Tests.csproj --no-restore`.
+- Le test navigateur mobile complet de chaque écran reste à faire avec une API locale ou de staging connectée.
 
 ### Critères d'acceptation
 

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import IconGlyph from '@/components/ui/IconGlyph.vue'
 
 const auth = useAuthStore()
 const route = useRoute()
@@ -24,25 +25,6 @@ function activeClass(prefix: string) {
     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
 }
 
-function applyNoZoomViewport() {
-  const content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no'
-  let meta = document.querySelector('meta[name="viewport"]') as HTMLMetaElement | null
-  if (!meta) {
-    meta = document.createElement('meta')
-    meta.setAttribute('name', 'viewport')
-    document.head.appendChild(meta)
-  }
-  meta.setAttribute('content', content)
-}
-const onGestureStart = (e: Event) => e.preventDefault()
-
-onMounted(() => {
-  applyNoZoomViewport()
-  document.addEventListener('gesturestart', onGestureStart)
-})
-onUnmounted(() => {
-  document.removeEventListener('gesturestart', onGestureStart)
-})
 </script>
 
 <template>
@@ -101,11 +83,7 @@ onUnmounted(() => {
             class="ml-2 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
             @click="logout"
           >
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path
-                d="M16 13v-2H7V8l-5 4 5 4v-3h9zM20 3h-8a2 2 0 00-2 2v4h2V5h8v14h-8v-4h-2v4a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2z"
-              />
-            </svg>
+            <IconGlyph name="logout" />
             Se déconnecter
           </button>
         </div>
@@ -148,9 +126,7 @@ onUnmounted(() => {
             :class="activeClass('/lists')"
             aria-current="page"
           >
-            <svg class="h-5 w-5 mb-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M7 5h14v2H7zM7 11h14v2H7zM7 17h14v2H7zM3 5h2v2H3zM3 11h2v2H3zM3 17h2v2H3z" />
-            </svg>
+            <IconGlyph name="list" class="!h-5 !w-5 mb-0.5" />
             <span>Listes</span>
           </RouterLink>
         </li>
@@ -160,9 +136,7 @@ onUnmounted(() => {
             class="flex flex-col items-center justify-center h-16 text-xs"
             :class="activeClass('/dishes')"
           >
-            <svg class="h-5 w-5 mb-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 3a9 9 0 100 18 9 9 0 000-18zm1 9h6a7 7 0 01-6 6v-6z" />
-            </svg>
+            <IconGlyph name="dish" class="!h-5 !w-5 mb-0.5" />
             <span>Plats</span>
           </RouterLink>
         </li>
@@ -172,9 +146,7 @@ onUnmounted(() => {
             class="flex flex-col items-center justify-center h-16 text-xs"
             :class="activeClass('/ingredients')"
           >
-            <svg class="h-5 w-5 mb-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M12 2l3 7h7l-5.5 4.5L18 22l-6-4-6 4 1.5-8.5L2 9h7z" />
-            </svg>
+            <IconGlyph name="ingredient" class="!h-5 !w-5 mb-0.5" />
             <span>Ingrédients</span>
           </RouterLink>
         </li>
@@ -184,11 +156,7 @@ onUnmounted(() => {
             class="flex flex-col items-center justify-center h-16 text-xs"
             :class="activeClass('/users')"
           >
-            <svg class="h-5 w-5 mb-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path
-                d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V20h14v-3.5C18 14.17 13.33 13 11 13zm8 0c-.29 0-.62.02-.97.05C19.16 14.2 22 15.45 22 17.5V20h-5v-3.5c0-.57-.13-1.1-.36-1.58.44-.06.86-.09 1.36-.09z"
-              />
-            </svg>
+            <IconGlyph name="users" class="!h-5 !w-5 mb-0.5" />
             <span>Utilisateurs</span>
           </RouterLink>
         </li>
