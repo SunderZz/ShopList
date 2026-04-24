@@ -35,6 +35,12 @@ Ce document décrit les comportements attendus avant implémentation.
 - Le détail d'une liste doit afficher les plats sélectionnés pour générer cette liste.
 - L'utilisateur doit pouvoir distinguer les plats sélectionnés des ingrédients ajoutés manuellement.
 
+### Données
+
+- `items` représente les lignes matérialisées et agrégées affichées à l'utilisateur.
+- `manualItems` représente les ingrédients ajoutés hors plats et doit être conservé séparément pour éviter les doubles comptages lors de l'édition.
+- Une ligne peut exposer `quantities` si plusieurs quantités explicites doivent être affichées pour le même ingrédient.
+
 ## Plats
 
 ### Unicité
@@ -94,6 +100,13 @@ Première proposition:
 - `1 cl = 10 ml`
 - `unité` ne se convertit pas vers masse ou volume.
 - `paquet` ne se convertit pas sans metadata additionnelle.
+
+### Décision implémentée
+
+- Les masses sont matérialisées en `g`.
+- Les volumes sont matérialisés en `ml`.
+- `paquet` et `unité` restent des unités distinctes.
+- Les familles incompatibles restent visibles via plusieurs quantités explicites.
 
 ### Rendu attendu
 
