@@ -1,180 +1,76 @@
-﻿# ShopList
-https://shop-list-two.vercel.app/
-## 🛒 Ma liste de courses
+# ShopList
 
-Projet effectué à but personnel
+Application personnelle de liste de courses: l'utilisateur sélectionne des plats, ajoute éventuellement des ingrédients manuels, puis obtient une liste agrégée par rayon.
 
----
+- Front production: https://shop-list-two.vercel.app/
+- API production: https://shoplist-33qz.onrender.com/
 
-## 📌 Étapes du projet
+## Stack actuelle
 
-1. Réflexion autour des collections de ma base de données
-2. Création de la base de données **NoSQL (MongoDB)**
-3. Connexion et setup du projet **back-end**
-4. Rédaction des **modèles (Models)**
-5. Rédaction des **repositories (Repositories)**
-6. Rédaction des **DTOs (Data Transfer Objects)**
-7. Rédaction des **services (Services)**
-8. Rédaction des **contrôleurs (Controllers)**
-9. Test des **controllers** en local
-10. Écriture de **tests unitaires**
-11. Finalisation du **back-end**
-12. Wireframe & maquettage du **site**
-13. Développement du **front-end** étape par étape  
-    ➝ **(Bande statique → Ajout contenu page par page)**
+- Back-end: ASP.NET Core .NET 8, MongoDB, JWT Bearer, FluentValidation, rate limiting, Swagger en développement.
+- Front-end: Vue 3, Vite, Pinia, Vue Router, Axios, Tailwind CSS.
+- Déploiement: Vercel pour le front, Render pour l'API.
 
----
+## Fonctionnalités principales
 
-## 🗂️ Collections de la BDD (MongoDB)
+- Authentification JWT avec rôles utilisateur standard et administrateur.
+- Isolation des listes par propriétaire: un utilisateur standard ne voit que ses listes.
+- Gestion des ingrédients et des plats avec normalisation des noms pour limiter les doublons.
+- Génération de listes à partir de plats sélectionnés.
+- Ajout d'ingrédients manuels hors plats.
+- Normalisation des unités pour agréger correctement les quantités compatibles.
 
-### **📌 Utilisateurs**
+## Normalisation des unités
 
-```json
-{
-  "users": [
-    {
-      "_id": "ObjectId",
-      "email": "string",
-      "pseudo": "string",
-      "passwordHash": "string",
-      "isSuperUser": "boolean"
-    }
-  ]
-}
+Le catalogue partagé back/front contient:
+
+- Masse: `g`, `kg`, agrégées en `g`.
+- Volume: `ml`, `cl`, `l`, agrégés en `ml`.
+- Pièce: `unité`.
+- Conditionnement: `paquet`.
+
+Quand un ingrédient arrive avec plusieurs familles d'unités incompatibles, la liste conserve plusieurs quantités explicites, par exemple `2 unité + 300 g`, au lieu de masquer l'information.
+
+Les listes stockent désormais les ingrédients manuels dans `manualItems` et les lignes matérialisées dans `items`. Chaque ligne peut exposer `quantities` pour représenter plusieurs quantités explicites.
+
+## Structure utile
+
+```text
+Back/
+  ListeDeCourses/Api/              API ASP.NET Core
+  ListeDeCourses.Api.Tests/        Tests métier exécutables
+Front/
+  listedecourses-front/            Application Vue/Vite
+docs/
+  00-CODEX_CONTEXT.md              Règles et contexte de travail
+  01-PLAN_ACTION.md                Avancement par sprint
+  02-SPECS_FONCTIONNELLES.md       Comportements attendus
+  03-BACKLOG_IDEES.md              Idées non prioritaires
 ```
 
-### **📌 Plats**
+## Prérequis locaux
 
-```json
-{
-  "dishes": [
-    {
-      "_id": "ObjectId",
-      "name": "string",
-      "ingredients": [
-        {
-          "ingredientId": "ObjectId",
-          "quantity": "string"
-        }
-      ]
-    }
-  ]
-}
-```
+- .NET SDK 8.
+- Node.js et npm.
+- MongoDB local, ou une URI MongoDB accessible.
 
-### **📌 Ingrédients**
+## Variables d'environnement
 
-```json
-{
-  "ingredients": [
-    {
-      "_id": "ObjectId",
-      "name": "string",
-      "category": "string",
-      "defaultQuantity": "string"
-    }
-  ]
-}
-```
+### API
 
-### **📌 Listes de courses**
+- `MONGODB_URI`: URI MongoDB. Si l'URI contient un nom de base, il est utilisé.
+- `MongoDbDatabase`: nom de base utilisé si `MONGODB_URI` ne contient pas de base.
+- `JWT__KEY`: secret JWT, requis hors développement.
+- `CORS_ALLOWED_ORIGINS` ou `FRONTEND_URL`: origines front autorisées hors développement.
 
-```json
-{
-  "shopping_lists": [
-    {
-      "_id": "ObjectId",
-      "userId": "ObjectId",
-      "date": "Date",
-      "name": "string",
-      "items": [
-        {
-          "ingredientId": "ObjectId",
-          "quantity": "string",
-          "category": "string",
-          "isChecked": "boolean"
-        }
-      ]
-    }
-  ]
-}
-```
+### Front
 
-### **📌 Rayons (Catégories) - Facultatif**
+- `VITE_API_BASE_URL`: URL de base API, par exemple `http://localhost:5145/api`.
+- `VITE_HMR_HOST`: optionnel, utile dans certains environnements distants.
 
-```json
-{
-  "categories": [
-    {
-      "_id": "ObjectId",
-      "name": "string"
-    }
-  ]
-}
-```
+## Commandes locales
 
----
-
-## 📂 Arborescence du projet
-
-```
-/ListeDeCourses
-│-- ListeDeCourses.Api/
-│   │-- Controllers/
-│   │   │-- UtilisateursController.cs
-│   │   │-- PlatsController.cs
-│   │   │-- IngredientsController.cs
-│   │   │-- ListesController.cs
-│   │
-│   │-- Models/
-│   │   │-- Utilisateur.cs
-│   │   │-- Plat.cs
-│   │   │-- Ingredient.cs
-│   │   │-- Liste.cs
-│   │
-│   │-- DTOs/
-│   │   │-- UtilisateurDTO.cs
-│   │   │-- PlatDTO.cs
-│   │   │-- IngredientDTO.cs
-│   │   │-- ListeDTO.cs
-│   │
-│   │-- Services/
-│   │   │-- UtilisateurService.cs
-│   │   │-- PlatService.cs
-│   │   │-- IngredientService.cs
-│   │   │-- ListeService.cs
-│   │
-│   │-- Repositories/
-│   │   │-- UtilisateurRepository.cs
-│   │   │-- PlatRepository.cs
-│   │   │-- IngredientRepository.cs
-│   │   │-- ListeRepository.cs
-│   │
-│   │-- appsettings.json
-│   │-- Program.cs
-```
-
----
-
-## 🚀 Objectif du projet
-
-Créer un site permettant de **générer une liste de courses à partir de plats sélectionnés**. Chaque plat est associé à une liste d’ingrédients qui sont **ajoutés automatiquement** à la liste de courses. L’utilisateur peut également :
-
-- Ajouter des **plats personnalisés** avec leurs ingrédients.
-- Recevoir des **suggestions de plats** basées sur les ingrédients déjà présents.
-- Organiser sa liste de courses par **rayons/catégories**.
-
-💡 **Technologies utilisées** :
-
-- **Back-end** : ASP.NET Core (.NET 8), MongoDB
-- **Front-end** : (à définir)
-- **Authentification** : (à implémenter, JWT ?)
-
----
-
-## Commandes locales fiables
-
-### Back-end
+### API
 
 ```sh
 cd Back/ListeDeCourses/Api
@@ -182,10 +78,15 @@ dotnet restore ApiList.csproj
 dotnet run
 ```
 
-L'API utilise MongoDB en local par defaut via `mongodb://localhost:27017` et la base `ShopList`.
-Elle ecoute en local sur `http://localhost:5145`.
+En développement, l'API utilise `mongodb://localhost:27017`, la base `ShopList`, et écoute en local sur `http://localhost:5145`.
 
-### Front-end
+### Tests back
+
+```sh
+dotnet run --project Back/ListeDeCourses.Api.Tests/Api.Tests.csproj --no-restore
+```
+
+### Front
 
 ```sh
 cd Front/listedecourses-front
@@ -196,14 +97,15 @@ npm run lint
 npm run build
 ```
 
-En developpement, Vite proxy les appels `/api` vers `http://localhost:5145`.
+En développement, Vite proxie les appels `/api` vers `http://localhost:5145`.
 
-### Audit dependances front
+## Vérifications recommandées avant push
 
 ```sh
+dotnet run --project Back/ListeDeCourses.Api.Tests/Api.Tests.csproj --no-restore
 cd Front/listedecourses-front
-npm audit --omit=dev
+npm run typecheck
+npm run build
 ```
 
-Le full audit peut encore signaler l'alerte dev-server `vite/esbuild`; sa correction demande une migration majeure de Vite et doit etre traitee dans une passe dediee.
-
+`npm run lint` reste recommandé quand le temps le permet. `npm audit --omit=dev` vérifie les vulnérabilités runtime front.

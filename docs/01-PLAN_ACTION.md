@@ -4,7 +4,7 @@ Ce document découpe le travail en jalons courts. Chaque sprint doit produire un
 
 ## Avancement global
 
-Avancement: `35/62 tâches - 56%`
+Avancement: `36/62 tâches - 58%`
 
 Une tâche cochée compte comme terminée uniquement si elle est implémentée, relue et vérifiée. Les critères d'acceptation servent à valider le sprint, mais ne sont pas comptés comme tâches.
 
@@ -238,15 +238,20 @@ Avancement: `0/6 tâches - 0%`
 
 Objectif: rendre le projet facile à reprendre.
 
-Avancement: `0/5 tâches - 0%`
+Avancement: `1/5 tâches - 20%`
 
 ### Tâches
 
-- [ ] Mettre à jour le README avec stack réelle, commandes, variables d'environnement.
+- [x] Mettre à jour le README avec stack réelle, commandes, variables d'environnement.
 - [ ] Documenter les routes API.
 - [ ] Documenter les modèles MongoDB actuels.
 - [ ] Mettre à jour les specs après chaque décision métier.
 - [ ] Tenir un backlog clair des tâches restantes.
+
+### Notes de vérification
+
+- Le README racine décrit maintenant la stack réelle, les URLs de déploiement, les commandes locales, les variables d'environnement et le comportement `manualItems`/`quantities`.
+- Le README front remplace le template Vite par les commandes et le contrat API utilisés par l'application.
 
 ### Critères d'acceptation
 
