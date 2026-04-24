@@ -111,6 +111,11 @@ const dishOptions = computed<Dish[]>(() => dishes.items)
 const ingredientOptions = computed<Ingredient[]>(() => ingredients.items)
 const { byId: ingById } = useMapById(() => ingredientOptions.value)
 
+const selectedDishes = computed(() => {
+  const ids = new Set(current.value?.dishIds ?? [])
+  return dishOptions.value.filter((dish) => ids.has(dish.id))
+})
+
 type Agg = Record<string, { qty: number | null; unit: string | null }>
 function aggregateFromDishIds(dishIds: string[]): Agg {
   const acc: Agg = {}
@@ -311,6 +316,39 @@ async function removeList() {
         >
           Supprimer
         </BaseButton>
+      </div>
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+      <div class="border-b px-4 py-2 font-medium flex items-center justify-between">
+        <span>Plats sélectionnés</span>
+        <span class="text-xs text-gray-500">{{ selectedDishes.length }} plat(s)</span>
+      </div>
+      <div v-if="selectedDishes.length" class="divide-y">
+        <div
+          v-for="dish in selectedDishes"
+          :key="dish.id"
+          class="px-4 py-3 flex items-center justify-between gap-3"
+        >
+          <div class="min-w-0">
+            <div class="font-medium truncate">{{ dish.name }}</div>
+            <div class="text-xs text-gray-500">
+              {{ dish.ingredients.length }} ingrédient(s)
+            </div>
+          </div>
+          <a
+            v-if="dish.sourceUrl"
+            :href="dish.sourceUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-sm font-medium text-emerald-700 hover:text-emerald-800"
+          >
+            Source
+          </a>
+        </div>
+      </div>
+      <div v-else class="px-4 py-4 text-sm text-gray-500">
+        Aucun plat sélectionné.
       </div>
     </div>
 

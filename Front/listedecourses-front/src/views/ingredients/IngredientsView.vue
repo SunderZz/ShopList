@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, nextTick } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useIngredientsStore } from '@/stores/ingredients'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 import DataTable from '@/components/ui/DataTable.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
+import IconGlyph from '@/components/ui/IconGlyph.vue'
 import type { Ingredient } from '@/api/types'
 import { useFlash } from '@/composables/useFlash'
 import { getApiErrorMessage } from '@/api/errors'
@@ -13,6 +14,7 @@ const store = useIngredientsStore()
 
 const form = ref({ name: '', aisle: '' })
 const formError = ref<string | null>(null)
+const showCreateModal = ref(false)
 const search = ref('')
 
 const editingId = ref<string | null>(null)
@@ -48,24 +50,43 @@ onMounted(() => {
   void store.ensureLoaded()
 })
 
+function resetCreateForm() {
+  form.value = { name: '', aisle: '' }
+  formError.value = null
+}
+
+function openCreateModal() {
+  resetCreateForm()
+  showCreateModal.value = true
+}
+
+function cancelCreateModal() {
+  showCreateModal.value = false
+  resetCreateForm()
+}
+
 async function createItem() {
-  if (!form.value.name) return
+  if (!form.value.name.trim()) return
   if (createNameAlreadyExists.value) return
   formError.value = null
 
   try {
     const prevLen = store.items.length
-    await store.createOne(form.value)
+    await store.createOne({
+      name: form.value.name.trim(),
+      aisle: form.value.aisle.trim(),
+    })
     await nextTick()
     const created = store.items.length > prevLen ? store.items[store.items.length - 1] : null
     flashRow(created?.id)
-    form.value = { name: '', aisle: '' }
+    showCreateModal.value = false
+    resetCreateForm()
   } catch (error: unknown) {
-    formError.value = getApiErrorMessage(error, 'Impossible de créer cet ingrédient.')
+    formError.value = getApiErrorMessage(error, 'Impossible de creer cet ingredient.')
   }
 }
 
-function startEdit(i: { id: string; name: string; aisle: string | null }) {
+function startEdit(i: Ingredient) {
   editingId.value = i.id
   editForm.value = { name: i.name ?? '', aisle: i.aisle ?? '' }
   editError.value = null
@@ -78,79 +99,76 @@ function cancelEdit() {
 
 async function confirmEdit(id: string) {
   editError.value = null
+  if (!editForm.value.name.trim()) return
 
   try {
     await store.updateOne(id, {
-      name: editForm.value.name,
-      aisle: editForm.value.aisle,
+      name: editForm.value.name.trim(),
+      aisle: editForm.value.aisle.trim(),
     })
     editingId.value = null
     await nextTick()
     flashRow(id)
   } catch (error: unknown) {
-    editError.value = getApiErrorMessage(error, 'Impossible de modifier cet ingrédient.')
+    editError.value = getApiErrorMessage(error, 'Impossible de modifier cet ingredient.')
   }
 }
 
 const confirmOpen = ref(false)
 const toDelete = ref<Ingredient | null>(null)
+const deleteError = ref<string | null>(null)
 
 function askDelete(i: Ingredient) {
   toDelete.value = i
+  deleteError.value = null
   confirmOpen.value = true
 }
 
 async function confirmDelete() {
   if (!toDelete.value) return
-  await store.deleteOne(toDelete.value.id)
-  confirmOpen.value = false
-  toDelete.value = null
+  deleteError.value = null
+
+  try {
+    await store.deleteOne(toDelete.value.id)
+    confirmOpen.value = false
+    toDelete.value = null
+  } catch (error: unknown) {
+    deleteError.value = getApiErrorMessage(error, 'Impossible de supprimer cet ingredient.')
+  }
 }
 
 function cancelDelete() {
   confirmOpen.value = false
   toDelete.value = null
+  deleteError.value = null
 }
 </script>
 
 <template>
   <section class="container mx-auto px-4 safe-pt safe-pb py-8 space-y-6">
     <div class="flex items-center justify-between gap-3">
-      <h1 class="text-3xl md:text-2xl font-semibold tracking-tight">Ingrédients</h1>
-      <span
-        class="hidden md:inline-flex items-center gap-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-full px-3 py-1"
-      >
-        {{ store.items.length }} ingrédient(s)
-      </span>
-    </div>
+      <div>
+        <h1 class="text-3xl md:text-2xl font-semibold tracking-tight">Ingredients</h1>
+        <p class="mt-1 text-sm text-gray-500 md:hidden">{{ store.items.length }} ingredient(s)</p>
+      </div>
 
-    <form
-      class="grid gap-3 items-end bg-white border border-gray-200 rounded-xl p-4 shadow-sm md:grid-cols-4"
-      @submit.prevent="createItem"
-    >
-      <BaseInput label="Nom" v-model="form.name" placeholder="ex: Tomates" />
-      <BaseInput label="Rayon" v-model="form.aisle" placeholder="ex: Fruits & Légumes" />
-      <div class="md:col-span-1">
-        <BaseButton
-          type="submit"
-          class="!h-11 !rounded-xl !px-5 !shadow-sm hover:!shadow-md w-full md:w-auto"
-          :disabled="!form.name || createNameAlreadyExists"
+      <div class="flex items-center gap-2">
+        <span
+          class="hidden md:inline-flex items-center gap-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-full px-3 py-1"
         >
-          Ajouter
+          {{ store.items.length }} ingredient(s)
+        </span>
+        <BaseButton
+          class="!w-auto !h-10 !rounded-xl !px-4 !shadow-sm hover:!shadow-md"
+          @click="openCreateModal"
+        >
+          <span class="inline-flex items-center gap-2">
+            <IconGlyph name="plus" />
+            Creer
+          </span>
         </BaseButton>
       </div>
-    </form>
-
-    <p
-      v-if="createNameAlreadyExists"
-      class="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800"
-    >
-      Cet ingredient existe deja. Utilisez la recherche pour le retrouver avant d'en creer un nouveau.
-    </p>
-
-    <p v-if="formError" class="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
-      {{ formError }}
-    </p>
+    </div>
 
     <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
       <div class="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
@@ -169,7 +187,77 @@ function cancelDelete() {
       </p>
     </div>
 
-    <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+    <div class="md:hidden space-y-3">
+      <div v-if="store.loading" class="bg-white border border-gray-200 rounded-xl p-4 text-sm text-gray-500">
+        Chargement...
+      </div>
+
+      <template v-else>
+        <div
+          v-for="i in filteredItems"
+          :key="i.id"
+          class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"
+          :class="flashSet[i.id] ? 'row-flash-card' : ''"
+        >
+          <div v-if="editingId !== i.id" class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="font-medium truncate">{{ i.name }}</div>
+              <div class="text-sm text-gray-600 truncate">{{ i.aisle || '-' }}</div>
+            </div>
+            <div class="flex flex-col gap-2 shrink-0">
+              <BaseButton
+                title="Modifier"
+                aria-label="Modifier"
+                class="!bg-white !text-gray-700 border hover:bg-gray-50 !h-9 !w-9 !p-0 !rounded-lg"
+                @click="startEdit(i)"
+              >
+                <IconGlyph name="edit" />
+              </BaseButton>
+              <BaseButton
+                title="Supprimer"
+                aria-label="Supprimer"
+                class="!bg-red-600 hover:!bg-red-700 !h-9 !w-9 !p-0 !rounded-lg"
+                @click="askDelete(i)"
+              >
+                <IconGlyph name="trash" />
+              </BaseButton>
+            </div>
+          </div>
+
+          <div v-else class="space-y-3">
+            <BaseInput label="Nom" v-model="editForm.name" />
+            <BaseInput label="Rayon" v-model="editForm.aisle" />
+            <p v-if="editError" class="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+              {{ editError }}
+            </p>
+            <div class="flex justify-end gap-2">
+              <BaseButton
+                class="!bg-gray-500 hover:!bg-gray-600 !h-10 !rounded-lg"
+                @click="cancelEdit"
+              >
+                Annuler
+              </BaseButton>
+              <BaseButton
+                class="!bg-emerald-600 hover:!bg-emerald-700 !h-10 !rounded-lg"
+                :disabled="!editForm.name.trim()"
+                @click="confirmEdit(i.id)"
+              >
+                Confirmer
+              </BaseButton>
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-if="!filteredItems.length"
+          class="bg-white border border-gray-200 rounded-xl p-4 text-sm text-gray-500"
+        >
+          Aucun ingredient trouve
+        </div>
+      </template>
+    </div>
+
+    <div class="hidden md:block bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
       <DataTable :loading="store.loading">
         <template #head>
           <th class="p-3 text-left bg-gray-50 text-gray-700 font-medium">Nom</th>
@@ -198,12 +286,12 @@ function cancelDelete() {
               <BaseInput v-model="editForm.aisle" />
             </template>
             <template v-else>
-              {{ i.aisle || '—' }}
+              {{ i.aisle || '-' }}
             </template>
           </td>
 
           <td class="p-3 align-middle">
-            <div class="flex justify-end gap-1 md:gap-2">
+            <div class="flex justify-end gap-2">
               <BaseButton
                 v-if="editingId !== i.id"
                 title="Modifier"
@@ -212,17 +300,7 @@ function cancelDelete() {
                 @click="startEdit(i)"
               >
                 <span class="inline-flex items-center gap-2 justify-center w-full">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-4 w-4"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M13.586 3.586a2 2 0 012.828 2.828l-9.193 9.193a1 1 0 01-.39.242l-3 1a1 1 0 01-1.266-1.266l1-3a1 1 0 01.242-.39l9.193-9.193z"
-                    />
-                  </svg>
+                  <IconGlyph name="edit" />
                   <span class="hidden md:inline">Modifier</span>
                 </span>
               </BaseButton>
@@ -230,25 +308,13 @@ function cancelDelete() {
               <template v-if="editingId === i.id">
                 <BaseButton
                   class="!bg-emerald-600 hover:!bg-emerald-700 !h-9 !w-9 !p-0 !rounded-lg md:!px-3 md:!w-auto"
-                  :disabled="!editForm.name"
+                  :disabled="!editForm.name.trim()"
                   aria-label="Confirmer"
                   title="Confirmer"
                   @click="confirmEdit(i.id)"
                 >
                   <span class="inline-flex items-center gap-2 justify-center w-full">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-4 w-4"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path
-                        fill-rule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414L8.5 14.914l-3.207-3.207a1 1 0 011.414-1.414L8.5 12.086l6.793-6.793a1 1 0 011.414 0z"
-                        clip-rule="evenodd"
-                      />
-                    </svg>
+                    <IconGlyph name="check" />
                     <span class="hidden md:inline">Confirmer</span>
                   </span>
                 </BaseButton>
@@ -259,19 +325,7 @@ function cancelDelete() {
                   @click="cancelEdit"
                 >
                   <span class="inline-flex items-center gap-2 justify-center w-full">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-4 w-4"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                      aria-hidden="true"
-                    >
-                      <path
-                        fill-rule="evenodd"
-                        d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                        clip-rule="evenodd"
-                      />
-                    </svg>
+                    <IconGlyph name="x" />
                     <span class="hidden md:inline">Annuler</span>
                   </span>
                 </BaseButton>
@@ -284,19 +338,7 @@ function cancelDelete() {
                 @click="askDelete(i)"
               >
                 <span class="inline-flex items-center gap-2 justify-center w-full">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="h-4 w-4"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fill-rule="evenodd"
-                      d="M6 8a1 1 0 012 0v7a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v7a1 1 0 102 0V8a1 1 0 00-1-1zM4 5h12v2H4V5zm3-2h6a1 1 0 011 1v1H6V4a1 1 0 011-1z"
-                      clip-rule="evenodd"
-                    />
-                  </svg>
+                  <IconGlyph name="trash" />
                   <span class="hidden md:inline">Supprimer</span>
                 </span>
               </BaseButton>
@@ -310,14 +352,70 @@ function cancelDelete() {
       </DataTable>
     </div>
 
+    <BaseModal
+      :show="showCreateModal"
+      panel-class="relative w-full md:w-[520px] bg-white rounded-t-2xl md:rounded-xl shadow-xl p-4 max-h-[calc(100vh-2rem)] overflow-y-auto"
+      @close="cancelCreateModal"
+    >
+      <form class="space-y-4" @submit.prevent="createItem">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-lg font-semibold">Creer un ingredient</h2>
+          <BaseButton
+            type="button"
+            class="!bg-gray-200 !text-gray-800 !h-9 !w-9 !p-0 !rounded-lg"
+            title="Annuler"
+            aria-label="Annuler"
+            @click="cancelCreateModal"
+          >
+            <IconGlyph name="x" />
+          </BaseButton>
+        </div>
+
+        <div class="grid gap-3">
+          <BaseInput label="Nom" v-model="form.name" placeholder="ex: Tomates" />
+          <BaseInput label="Rayon" v-model="form.aisle" placeholder="ex: Fruits & Legumes" />
+        </div>
+
+        <p
+          v-if="createNameAlreadyExists"
+          class="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800"
+        >
+          Cet ingredient existe deja. Utilisez la recherche pour le retrouver avant d'en creer un nouveau.
+        </p>
+
+        <p v-if="formError" class="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+          {{ formError }}
+        </p>
+
+        <div class="flex justify-end gap-2">
+          <BaseButton
+            type="button"
+            class="!bg-gray-200 !text-gray-800 !h-10 !rounded-lg"
+            @click="cancelCreateModal"
+          >
+            Annuler
+          </BaseButton>
+          <BaseButton
+            type="submit"
+            class="!h-10 !rounded-lg"
+            :disabled="!form.name.trim() || createNameAlreadyExists"
+          >
+            Ajouter
+          </BaseButton>
+        </div>
+      </form>
+    </BaseModal>
+
     <BaseModal :show="confirmOpen" @close="cancelDelete">
       <div class="p-1">
         <h2 class="text-lg font-semibold mb-2">Confirmer la suppression</h2>
         <p class="text-sm text-gray-700 mb-4">
-          Supprimer "<span class="font-medium">{{ toDelete?.name }}</span
-          >" ?
+          Supprimer "<span class="font-medium">{{ toDelete?.name }}</span>" ?
         </p>
-        <div class="flex justify-end gap-1 md:gap-2">
+        <p v-if="deleteError" class="mb-4 rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+          {{ deleteError }}
+        </p>
+        <div class="flex justify-end gap-2">
           <BaseButton
             class="!bg-gray-500 hover:!bg-gray-600 !h-9 !w-9 !p-0 !rounded-lg md:!px-3 md:!w-auto"
             aria-label="Annuler"
@@ -325,19 +423,7 @@ function cancelDelete() {
             @click="cancelDelete"
           >
             <span class="inline-flex items-center gap-2 justify-center w-full">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-4 w-4"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  fill-rule="evenodd"
-                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                  clip-rule="evenodd"
-                />
-              </svg>
+              <IconGlyph name="x" />
               <span class="hidden md:inline">Annuler</span>
             </span>
           </BaseButton>
@@ -349,19 +435,7 @@ function cancelDelete() {
             @click="confirmDelete"
           >
             <span class="inline-flex items-center gap-2 justify-center w-full">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-4 w-4"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  fill-rule="evenodd"
-                  d="M6 8a1 1 0 012 0v7a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v7a1 1 0 102 0V8a1 1 0 00-1-1zM4 5h12v2H4V5zm3-2h6a1 1 0 011 1v1H6V4a1 1 0 011-1z"
-                  clip-rule="evenodd"
-                />
-              </svg>
+              <IconGlyph name="trash" />
               <span class="hidden md:inline">Supprimer</span>
             </span>
           </BaseButton>
@@ -370,3 +444,18 @@ function cancelDelete() {
     </BaseModal>
   </section>
 </template>
+
+<style scoped>
+@keyframes rowFlashCard {
+  0% {
+    background-color: #ecfdf5;
+  }
+  100% {
+    background-color: white;
+  }
+}
+
+.row-flash-card {
+  animation: rowFlashCard 1.2s ease-out 1;
+}
+</style>

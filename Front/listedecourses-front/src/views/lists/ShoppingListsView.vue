@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useListsStore } from '@/stores/lists'
 import { useDishesStore } from '@/stores/dishes'
@@ -8,9 +8,12 @@ import { useUsersStore } from '@/stores/users'
 import { useAuthStore } from '@/stores/auth'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
 import DataTable from '@/components/ui/DataTable.vue'
+import IconGlyph from '@/components/ui/IconGlyph.vue'
 import QtyUnitInput from '@/components/ui/QtyUnitInput.vue'
 import type { ShoppingListItem, Ingredient, Dish, User } from '@/api/types'
+import { getApiErrorMessage } from '@/api/errors'
 import { UNIT_OPTIONS } from '@/utils/units'
 
 const router = useRouter()
@@ -20,10 +23,12 @@ const ingredients = useIngredientsStore()
 const users = useUsersStore()
 const auth = useAuthStore()
 
+const showCreateModal = ref(false)
 const createName = ref<string>('')
 const createDate = ref<string>(new Date().toISOString().slice(0, 10))
 const createDishIds = ref<string[]>([])
 const createManualItems = ref<ShoppingListItem[]>([])
+const createError = ref<string | null>(null)
 
 const showPicker = ref(false)
 const pickerTab = ref<'dishes' | 'ingredients'>('dishes')
@@ -34,7 +39,6 @@ const selectedIngredientMetaById = ref<Record<string, IngMeta>>({})
 const dishSearch = ref('')
 const ingSearch = ref('')
 type QtyUnit = { quantity: number | null; unit: string | null }
-
 
 const pickerErrors = ref<Record<string, string>>({})
 const globalPickerError = ref<string | null>(null)
@@ -63,6 +67,27 @@ const ingById = computed<Record<string, Ingredient>>(() => {
   for (const i of ingredientOptions.value) m[i.id] = i
   return m
 })
+
+function resetCreateForm() {
+  createName.value = ''
+  createDate.value = new Date().toISOString().slice(0, 10)
+  createDishIds.value = []
+  createManualItems.value = []
+  createError.value = null
+  globalPickerError.value = null
+  pickerErrors.value = {}
+}
+
+function openCreateModal() {
+  resetCreateForm()
+  showCreateModal.value = true
+}
+
+function cancelCreateModal() {
+  showCreateModal.value = false
+  showPicker.value = false
+  resetCreateForm()
+}
 
 function openPicker() {
   pickerTab.value = 'dishes'
@@ -95,10 +120,10 @@ function validateSelectedIngredients(): boolean {
   globalPickerError.value = null
   for (const id of selectedIngredientIds.value) {
     const meta = selectedIngredientMetaById.value[id]
-    if (!isMetaValid(meta)) pickerErrors.value[id] = 'Quantité (> 0) et unité requises.'
+    if (!isMetaValid(meta)) pickerErrors.value[id] = 'Quantite (> 0) et unite requises.'
   }
   if (Object.keys(pickerErrors.value).length) {
-    globalPickerError.value = 'Complétez quantité + unité pour les ingrédients sélectionnés.'
+    globalPickerError.value = 'Completez quantite + unite pour les ingredients selectionnes.'
     return false
   }
   return true
@@ -139,17 +164,21 @@ const filteredIngredients = computed(() => {
 
 async function createList() {
   if (!createName.value.trim()) return
-  const { id } = await lists.createOne({
-    name: createName.value.trim(),
-    date: createDate.value,
-    dishIds: createDishIds.value,
-    items: createManualItems.value,
-  })
-  createName.value = ''
-  createDate.value = new Date().toISOString().slice(0, 10)
-  createDishIds.value = []
-  createManualItems.value = []
-  router.push(`/lists/${id}`)
+  createError.value = null
+
+  try {
+    const { id } = await lists.createOne({
+      name: createName.value.trim(),
+      date: createDate.value,
+      dishIds: createDishIds.value,
+      items: createManualItems.value,
+    })
+    showCreateModal.value = false
+    resetCreateForm()
+    router.push(`/lists/${id}`)
+  } catch (error: unknown) {
+    createError.value = getApiErrorMessage(error, 'Impossible de creer cette liste.')
+  }
 }
 
 function goDetail(lId: string) {
@@ -158,36 +187,27 @@ function goDetail(lId: string) {
 </script>
 
 <template>
-  <section class="container mx-auto px-4 safe-pt safe-pb py-8 space-y-8">
-    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-xl md:text-lg font-semibold">Créer une liste</h2>
+  <section class="container mx-auto px-4 safe-pt safe-pb py-8 space-y-6">
+    <div class="flex items-center justify-between gap-3">
+      <div>
+        <h1 class="text-3xl md:text-2xl font-semibold tracking-tight">Listes</h1>
+        <p class="mt-1 text-sm text-gray-500 md:hidden">{{ lists.items.length }} liste(s)</p>
       </div>
 
-      <div class="grid md:grid-cols-3 gap-3 items-end">
-        <BaseInput
-          label="Nom de la liste"
-          v-model="createName"
-          placeholder="ex: Courses du samedi"
-        />
-        <BaseInput label="Date" type="date" v-model="createDate" />
-        <div class="flex justify-end md:justify-start">
-          <BaseButton
-            type="button"
-            class="!h-11 !rounded-xl !px-5 !shadow-sm hover:!shadow-md"
-            @click="openPicker"
-          >
-            Ajouter des plats/ingrédients
-          </BaseButton>
-        </div>
-      </div>
-      <div class="text-right">
-        <BaseButton
-          :disabled="!createName.trim()"
-          class="!h-11 !rounded-xl !px-5 !shadow-sm hover:!shadow-md"
-          @click="createList"
+      <div class="flex items-center gap-2">
+        <span
+          class="hidden md:inline-flex items-center gap-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-full px-3 py-1"
         >
-          Créer
+          {{ lists.items.length }} liste(s)
+        </span>
+        <BaseButton
+          class="!w-auto !h-10 !rounded-xl !px-4 !shadow-sm hover:!shadow-md"
+          @click="openCreateModal"
+        >
+          <span class="inline-flex items-center gap-2">
+            <IconGlyph name="plus" />
+            Creer
+          </span>
         </BaseButton>
       </div>
     </div>
@@ -201,7 +221,7 @@ function goDetail(lId: string) {
               Proprietaire
             </th>
             <th class="p-3 bg-gray-50 text-left text-gray-700 font-medium">Date</th>
-            <th class="p-3 bg-gray-50 text-left text-gray-700 font-medium">Ingrédients</th>
+            <th class="p-3 bg-gray-50 text-left text-gray-700 font-medium">Ingredients</th>
             <th class="p-3 bg-gray-50 text-left text-gray-700 font-medium">Plats</th>
           </template>
           <tr
@@ -216,51 +236,126 @@ function goDetail(lId: string) {
             <td class="p-3">{{ l.items.length }}</td>
             <td class="p-3">{{ l.dishIds.length }}</td>
           </tr>
+          <tr v-if="!lists.items.length && !lists.loading">
+            <td :colspan="isAdmin ? 5 : 4" class="p-4 text-sm text-gray-500">Aucune liste</td>
+          </tr>
         </DataTable>
       </div>
 
       <div class="md:hidden divide-y">
-        <button
-          v-for="l in lists.items"
-          :key="l.id"
-          class="w-full text-left px-4 py-3 active:bg-gray-50"
-          @click="goDetail(l.id)"
-        >
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0">
-              <div class="font-medium truncate">{{ l.name }}</div>
-              <div class="text-xs text-gray-500 mt-0.5">
-                {{ new Date(l.date).toLocaleDateString() }}
+        <div v-if="lists.loading" class="px-4 py-6 text-sm text-gray-500">Chargement...</div>
+
+        <template v-else>
+          <button
+            v-for="l in lists.items"
+            :key="l.id"
+            class="w-full text-left px-4 py-3 active:bg-gray-50"
+            @click="goDetail(l.id)"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="font-medium truncate">{{ l.name }}</div>
+                <div class="text-xs text-gray-500 mt-0.5">
+                  {{ new Date(l.date).toLocaleDateString() }}
+                </div>
+                <div v-if="isAdmin" class="text-xs text-gray-500 mt-1 truncate">
+                  {{ ownerLabel(l.ownerId) }}
+                </div>
               </div>
-              <div v-if="isAdmin" class="text-xs text-gray-500 mt-1 truncate">
-                {{ ownerLabel(l.ownerId) }}
+              <div class="flex items-center gap-2 shrink-0">
+                <span
+                  class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-gray-100 text-gray-700"
+                >
+                  <IconGlyph name="list" class="!h-3.5 !w-3.5" />
+                  {{ l.items.length }}
+                </span>
+                <span
+                  class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-gray-100 text-gray-700"
+                >
+                  <IconGlyph name="dish" class="!h-3.5 !w-3.5" />
+                  {{ l.dishIds.length }}
+                </span>
               </div>
             </div>
-            <div class="flex items-center gap-2 shrink-0">
-              <span
-                class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-gray-100 text-gray-700"
-              >
-                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path
-                    d="M7 5h14v2H7zM7 11h14v2H7zM7 17h14v2H7zM3 5h2v2H3zM3 11h2v2H3zM3 17h2v2H3z"
-                  />
-                </svg>
-                {{ l.items.length }}
-              </span>
-              <span
-                class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-gray-100 text-gray-700"
-              >
-                <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M12 3a9 9 0 100 18 9 9 0 000-18zm1 9h6a7 7 0 01-6 6v-6z" />
-                </svg>
-                {{ l.dishIds.length }}
-              </span>
-            </div>
-          </div>
-        </button>
-        <div v-if="!lists.items.length" class="px-4 py-6 text-sm text-gray-500">Aucune liste</div>
+          </button>
+          <div v-if="!lists.items.length" class="px-4 py-6 text-sm text-gray-500">Aucune liste</div>
+        </template>
       </div>
     </div>
+
+    <BaseModal
+      :show="showCreateModal"
+      panel-class="relative w-full md:w-[680px] bg-white rounded-t-2xl md:rounded-xl shadow-xl p-4 max-h-[calc(100vh-2rem)] overflow-y-auto"
+      @close="cancelCreateModal"
+    >
+      <form class="space-y-4" @submit.prevent="createList">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-lg font-semibold">Creer une liste</h2>
+          <BaseButton
+            type="button"
+            class="!bg-gray-200 !text-gray-800 !h-9 !w-9 !p-0 !rounded-lg"
+            title="Annuler"
+            aria-label="Annuler"
+            @click="cancelCreateModal"
+          >
+            <IconGlyph name="x" />
+          </BaseButton>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-3 items-end">
+          <BaseInput
+            label="Nom de la liste"
+            v-model="createName"
+            placeholder="ex: Courses du samedi"
+          />
+          <BaseInput label="Date" type="date" v-model="createDate" />
+        </div>
+
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <BaseButton
+            type="button"
+            class="!h-11 !rounded-xl !px-5 !shadow-sm hover:!shadow-md"
+            @click="openPicker"
+          >
+            Ajouter des plats/ingredients
+          </BaseButton>
+          <div class="text-sm text-gray-600">
+            {{ createDishIds.length }} plat(s), {{ createManualItems.length }} ingredient(s)
+          </div>
+        </div>
+
+        <div
+          v-if="globalPickerError"
+          class="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700"
+        >
+          {{ globalPickerError }}
+        </div>
+
+        <div
+          v-if="createError"
+          class="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700"
+        >
+          {{ createError }}
+        </div>
+
+        <div class="flex justify-end gap-2">
+          <BaseButton
+            type="button"
+            class="!bg-gray-200 !text-gray-800 !h-10 !rounded-lg"
+            @click="cancelCreateModal"
+          >
+            Annuler
+          </BaseButton>
+          <BaseButton
+            type="submit"
+            :disabled="!createName.trim()"
+            class="!h-10 !rounded-lg"
+          >
+            Creer
+          </BaseButton>
+        </div>
+      </form>
+    </BaseModal>
 
     <div
       v-if="showPicker"
@@ -299,7 +394,7 @@ function goDetail(lId: string) {
               "
               @click="pickerTab = 'ingredients'"
             >
-              Ingrédients
+              Ingredients
             </button>
           </div>
           <div class="flex gap-2">
@@ -325,7 +420,7 @@ function goDetail(lId: string) {
             <BaseInput label="Rechercher un plat" v-model="dishSearch" />
           </div>
           <div v-else>
-            <BaseInput label="Rechercher un ingrédient" v-model="ingSearch" />
+            <BaseInput label="Rechercher un ingredient" v-model="ingSearch" />
           </div>
 
           <div class="grid md:grid-cols-2 gap-4">
@@ -368,14 +463,14 @@ function goDetail(lId: string) {
                     </label>
                   </div>
                   <div v-if="!filteredIngredients.length" class="px-3 py-4 text-sm text-gray-500">
-                    Aucun ingrédient
+                    Aucun ingredient
                   </div>
                 </template>
               </div>
             </div>
 
             <div v-if="pickerTab === 'ingredients'" class="border border-gray-200 rounded-xl p-3">
-              <h3 class="text-sm font-medium mb-2">Ingrédients sélectionnées</h3>
+              <h3 class="text-sm font-medium mb-2">Ingredients selectionnes</h3>
               <div class="space-y-2 max-h-[60vh] overflow-y-auto">
                 <div
                   v-for="ingId in selectedIngredientIds"
@@ -410,7 +505,7 @@ function goDetail(lId: string) {
                 </div>
 
                 <div v-if="!selectedIngredientIds.length" class="text-sm text-gray-500">
-                  Aucun élément
+                  Aucun element
                 </div>
               </div>
             </div>
@@ -418,10 +513,10 @@ function goDetail(lId: string) {
 
           <div class="text-xs text-gray-600">
             <template v-if="pickerTab === 'dishes'">
-              {{ selectedDishIds.length }} plat(s) sélectionné(s)
+              {{ selectedDishIds.length }} plat(s) selectionne(s)
             </template>
             <template v-else>
-              {{ selectedIngredientIds.length }} ingrédient(s) sélectionné(s)
+              {{ selectedIngredientIds.length }} ingredient(s) selectionne(s)
             </template>
           </div>
         </div>
