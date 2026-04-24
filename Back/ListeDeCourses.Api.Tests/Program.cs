@@ -2,9 +2,11 @@ using System.Net;
 using System.Security.Claims;
 using ListeDeCourses.Api.Common;
 using ListeDeCourses.Api.DTOs;
+using ListeDeCourses.Api.Mappings;
 using ListeDeCourses.Api.Models;
 using ListeDeCourses.Api.Repositories;
 using ListeDeCourses.Api.Services;
+using ListeDeCourses.Api.Validators;
 using Microsoft.AspNetCore.Http;
 using MongoDB.Driver;
 
@@ -27,6 +29,8 @@ public static class Program
             ("incompatible units stay explicit in shopping list aggregation", IncompatibleUnitsStayExplicitInShoppingListAggregation),
             ("manual items are preserved separately from dish aggregation", ManualItemsArePreservedSeparatelyFromDishAggregation),
             ("shopping list materialization batches repository lookups", ShoppingListMaterializationBatchesRepositoryLookups),
+            ("dish source URL is mapped and trimmed", DishSourceUrlIsMappedAndTrimmed),
+            ("dish source URL validation rejects unsafe values", DishSourceUrlValidationRejectsUnsafeValues),
         };
 
         var failures = 0;
@@ -304,6 +308,55 @@ public static class Program
         Assert.Equal(0, ingredients.GetByIdCalls);
         Assert.Equal(2, ingredients.GetByIdsCalls);
         Assert.Equal(6, result.Items.Count);
+    }
+
+    private static Task DishSourceUrlIsMappedAndTrimmed()
+    {
+        var dto = new PlatCreateDto
+        {
+            Name = "source-check",
+            SourceUrl = " https://example.com/recette ",
+            Ingredients =
+            [
+                new PlatIngredientDto { IngredientId = "ingredient-a", Quantity = 1, Unit = "g" },
+            ],
+        };
+
+        var model = dto.ToModel();
+        Assert.Equal("https://example.com/recette", model.SourceUrl);
+        Assert.Equal("https://example.com/recette", model.ToReadDto().SourceUrl);
+
+        model.Apply(new PlatUpdateDto { SourceUrl = "" });
+        Assert.Equal<string?>(null, model.SourceUrl);
+        return Task.CompletedTask;
+    }
+
+    private static Task DishSourceUrlValidationRejectsUnsafeValues()
+    {
+        var createValidator = new PlatCreateDtoValidator();
+        var updateValidator = new PlatUpdateDtoValidator();
+
+        var valid = createValidator.Validate(new PlatCreateDto
+        {
+            Name = "source-check",
+            SourceUrl = "https://example.com/recette",
+            Ingredients =
+            [
+                new PlatIngredientDto { IngredientId = "ingredient-a", Quantity = 1, Unit = "g" },
+            ],
+        });
+        Assert.True(valid.IsValid, "Expected a regular HTTPS source URL to be accepted.");
+
+        var credentialUrl = "https://" + "user:pass@" + "example.com/recette";
+        foreach (var sourceUrl in new[] { "ftp://example.com/recette", credentialUrl, "not-a-url" })
+        {
+            var result = updateValidator.Validate(new PlatUpdateDto { SourceUrl = sourceUrl });
+            Assert.True(!result.IsValid, $"Expected '{sourceUrl}' to be rejected.");
+        }
+
+        var clear = updateValidator.Validate(new PlatUpdateDto { SourceUrl = "" });
+        Assert.True(clear.IsValid, "Expected an empty source URL to be accepted for clearing.");
+        return Task.CompletedTask;
     }
 
     private static ListeService CreateService(IEnumerable<Liste> seed, ClaimsPrincipal? principal) =>

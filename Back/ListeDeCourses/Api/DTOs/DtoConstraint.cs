@@ -9,6 +9,7 @@ namespace ListeDeCourses.Api.DTOs
         public const int AisleMax = 100;
 
         public const int UnitMax = 50;
+        public const int SourceUrlMax = 2048;
 
         public const int EmailMax = 255;
         public const int PseudoMin = 2;

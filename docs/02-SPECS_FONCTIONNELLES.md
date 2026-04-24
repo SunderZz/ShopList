@@ -53,6 +53,7 @@ Ce document décrit les comportements attendus avant implémentation.
 - Un plat peut contenir un lien optionnel vers une recette externe.
 - Le champ recommandé est `sourceUrl`.
 - Les URLs acceptées doivent être HTTP ou HTTPS.
+- Les URLs contenant des identifiants intégrés sont refusées.
 - Exemples de sources prévues: YouTube, Marmiton, TikTok, blogs de cuisine.
 
 ### Affichage

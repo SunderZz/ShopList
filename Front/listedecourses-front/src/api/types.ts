@@ -36,6 +36,7 @@ export interface DishIngredientRef {
 export interface Dish {
   id: string
   name: string
+  sourceUrl: string | null
   ingredients: DishIngredientRef[]
 }
 

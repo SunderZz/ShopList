@@ -76,6 +76,9 @@ public class PlatService : BaseService<PlatReadDto, PlatCreateDto, PlatUpdateDto
             }).ToList();
         }
 
+        if (dto.SourceUrl is not null)
+            existing.SourceUrl = PlatMappings.NormalizeSourceUrl(dto.SourceUrl);
+
         try
         {
             await _plats.UpdateAsync(id, existing, ct);
