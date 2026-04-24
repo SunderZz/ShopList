@@ -4,7 +4,7 @@ Ce document découpe le travail en jalons courts. Chaque sprint doit produire un
 
 ## Avancement global
 
-Avancement: `37/62 tâches - 60%`
+Avancement: `42/62 tâches - 68%`
 
 Une tâche cochée compte comme terminée uniquement si elle est implémentée, relue et vérifiée. Les critères d'acceptation servent à valider le sprint, mais ne sont pas comptés comme tâches.
 
@@ -167,15 +167,22 @@ Avancement: `6/6 tâches - 100%`
 
 Objectif: associer un lien externe à un plat.
 
-Avancement: `0/5 tâches - 0%`
+Avancement: `5/5 tâches - 100%`
 
 ### Tâches
 
-- [ ] Ajouter un champ optionnel `recipeUrl` ou `sourceUrl` sur les plats.
-- [ ] Valider que le lien est une URL HTTP/HTTPS.
-- [ ] Afficher le lien dans la liste et le détail du plat.
-- [ ] Ouvrir le lien dans un nouvel onglet avec `rel="noopener noreferrer"`.
-- [ ] Préparer ce champ pour les futures fonctionnalités de récupération d'ingrédients.
+- [x] Ajouter un champ optionnel `recipeUrl` ou `sourceUrl` sur les plats.
+- [x] Valider que le lien est une URL HTTP/HTTPS.
+- [x] Afficher le lien dans la liste et le détail du plat.
+- [x] Ouvrir le lien dans un nouvel onglet avec `rel="noopener noreferrer"`.
+- [x] Préparer ce champ pour les futures fonctionnalités de récupération d'ingrédients.
+
+### Notes de vérification
+
+- Le champ implémenté est `sourceUrl`, disponible sur les DTOs, le modèle MongoDB et le contrat TypeScript.
+- Les validateurs acceptent uniquement les URLs HTTP/HTTPS sans identifiants intégrés.
+- La vue Plats permet d'ajouter, modifier, supprimer et ouvrir le lien source avec `noopener noreferrer`.
+- Tests back ajoutés pour le mapping du champ et le rejet des URLs non sûres.
 
 ### Critères d'acceptation
 

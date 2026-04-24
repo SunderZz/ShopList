@@ -20,6 +20,9 @@ namespace ListeDeCourses.Api.DTOs
         [Required, MinLength(DtoConstraints.NameMin), MaxLength(DtoConstraints.NameMax)]
         public required string Name { get; init; }
 
+        [MaxLength(DtoConstraints.SourceUrlMax)]
+        public string? SourceUrl { get; init; }
+
         public required List<PlatIngredientDto> Ingredients { get; init; }
     }
 
@@ -27,6 +30,9 @@ namespace ListeDeCourses.Api.DTOs
     {
         [Required, MinLength(DtoConstraints.NameMin), MaxLength(DtoConstraints.NameMax)]
         public required string Name { get; init; }
+
+        [MaxLength(DtoConstraints.SourceUrlMax)]
+        public string? SourceUrl { get; init; }
 
         [Required, MinLength(1)]
         public required List<PlatIngredientDto> Ingredients { get; init; }
@@ -36,6 +42,9 @@ namespace ListeDeCourses.Api.DTOs
     {
         [MinLength(DtoConstraints.NameMin), MaxLength(DtoConstraints.NameMax)]
         public string? Name { get; init; }
+
+        [MaxLength(DtoConstraints.SourceUrlMax)]
+        public string? SourceUrl { get; init; }
 
         public List<PlatIngredientDto>? Ingredients { get; init; }
     }

@@ -18,6 +18,7 @@ const ingredients = useIngredientsStore()
 
 
 const createName = ref<string>('')
+const createSourceUrl = ref<string>('')
 const createError = ref<string | null>(null)
 const dishSearch = ref('')
 type QtyUnit = { quantity: number | null; unit: string | null }
@@ -54,6 +55,32 @@ const createNameAlreadyExists = computed(() => {
   if (!name) return false
   return dishes.items.some((d) => normalizeSearch(d.name) === name)
 })
+
+function normalizeSourceUrl(value: string | null | undefined) {
+  const trimmed = value?.trim() ?? ''
+  return trimmed.length ? trimmed : null
+}
+
+function isSafeSourceUrl(value: string) {
+  try {
+    const url = new URL(value)
+    return (
+      (url.protocol === 'http:' || url.protocol === 'https:') &&
+      !url.username &&
+      !url.password
+    )
+  } catch {
+    return false
+  }
+}
+
+function sourceUrlError(value: string) {
+  const normalized = normalizeSourceUrl(value)
+  if (!normalized) return null
+  return isSafeSourceUrl(normalized) ? null : 'URL HTTP/HTTPS sans identifiants requise.'
+}
+
+const createSourceUrlError = computed(() => sourceUrlError(createSourceUrl.value))
 
 const filteredIngredientsCreate = computed(() => {
   const q = ingSearchCreate.value.trim().toLowerCase()
@@ -115,6 +142,7 @@ async function createDish() {
   if (selectedCreateIds.value.length && !validateCreateSelection()) return
   if (!createName.value.trim()) return
   if (createNameAlreadyExists.value) return
+  if (createSourceUrlError.value) return
 
   try {
     const ingredientsPayload = selectedCreateIds.value.map((id) => {
@@ -125,6 +153,7 @@ async function createDish() {
     const prevLen = dishes.items.length
     const created = await dishes.createOne({
       name: createName.value.trim(),
+      sourceUrl: normalizeSourceUrl(createSourceUrl.value),
       ingredients: ingredientsPayload,
     })
 
@@ -136,6 +165,7 @@ async function createDish() {
     flashRow(createdId)
 
     createName.value = ''
+    createSourceUrl.value = ''
     selectedCreateIds.value = []
     createMetaById.value = {}
     createPickerErrors.value = {}
@@ -155,6 +185,7 @@ type EditRow = {
 }
 const editingDishId = ref<string | null>(null)
 const editName = ref<string>('')
+const editSourceUrl = ref<string>('')
 const editRows = ref<EditRow[]>([])
 const showAddInline = ref(false)
 const ingSearchEdit = ref('')
@@ -162,6 +193,7 @@ const editSectionRef = ref<HTMLElement | null>(null)
 
 const editErrors = ref<Record<string, string>>({})
 const globalEditError = ref<string | null>(null)
+const editSourceUrlError = computed(() => sourceUrlError(editSourceUrl.value))
 
 const filteredIngredientsEdit = computed(() => {
   const q = ingSearchEdit.value.trim().toLowerCase()
@@ -174,6 +206,7 @@ const filteredIngredientsEdit = computed(() => {
 function cancelEdit() {
   editingDishId.value = null
   editName.value = ''
+  editSourceUrl.value = ''
   editRows.value = []
   showAddInline.value = false
   ingSearchEdit.value = ''
@@ -226,6 +259,10 @@ async function saveEdit() {
     globalEditError.value = 'Nom du plat requis.'
     return
   }
+  if (editSourceUrlError.value) {
+    globalEditError.value = editSourceUrlError.value
+    return
+  }
   if (!validateEdit()) return
 
   const payload = editRows.value
@@ -236,10 +273,15 @@ async function saveEdit() {
       unit: r.unit,
     }))
   try {
-    await dishes.updateOne(editingDishId.value, { name: normalizedName, ingredients: payload })
+    await dishes.updateOne(editingDishId.value, {
+      name: normalizedName,
+      sourceUrl: normalizeSourceUrl(editSourceUrl.value) ?? '',
+      ingredients: payload,
+    })
     const editedId = editingDishId.value
     editingDishId.value = null
     editName.value = ''
+    editSourceUrl.value = ''
     editRows.value = []
     showAddInline.value = false
     await nextTick()
@@ -259,6 +301,7 @@ function scrollToEdit() {
 async function startEdit(d: Dish) {
   editingDishId.value = d.id
   editName.value = d.name ?? ''
+  editSourceUrl.value = d.sourceUrl ?? ''
   editRows.value = (d.ingredients ?? [])
     .map((it) => {
       const iid = String(it.ingredientId)
@@ -306,6 +349,10 @@ function dishDisplayedCount(d: Dish) {
   return (d.ingredients ?? []).filter((it) => !!ingById.value[String(it.ingredientId)]).length
 }
 
+function dishSourceHref(d: Dish) {
+  return normalizeSourceUrl(d.sourceUrl)
+}
+
 onMounted(() => {
   void Promise.all([dishes.ensureLoaded(), ingredients.ensureLoaded()])
 })
@@ -316,8 +363,15 @@ onMounted(() => {
     <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-4">
       <h2 class="text-xl md:text-lg font-semibold">Créer un plat</h2>
 
-      <div class="grid gap-3 items-end md:grid-cols-3">
+      <div class="grid gap-3 items-end md:grid-cols-[1fr_1fr_auto_auto]">
         <BaseInput label="Nom du plat" v-model="createName" placeholder="ex: Pâtes bolognaise" />
+        <BaseInput
+          label="Lien recette"
+          type="url"
+          v-model="createSourceUrl"
+          placeholder="https://..."
+          :error="createSourceUrlError ?? undefined"
+        />
         <div class="flex justify-end md:justify-start">
           <BaseButton
             type="button"
@@ -329,7 +383,7 @@ onMounted(() => {
         </div>
         <div class="text-right md:col-span-1">
           <BaseButton
-            :disabled="!createName.trim() || createNameAlreadyExists"
+            :disabled="!createName.trim() || createNameAlreadyExists || !!createSourceUrlError"
             class="!h-11 !rounded-xl !px-5 !shadow-sm hover:!shadow-md"
             @click="createDish"
           >
@@ -414,6 +468,15 @@ onMounted(() => {
         <div class="flex items-center justify-between gap-3">
           <div class="min-w-0">
             <div class="font-medium truncate">{{ d.name }}</div>
+            <a
+              v-if="dishSourceHref(d)"
+              :href="dishSourceHref(d) ?? undefined"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="mt-1 inline-flex text-xs font-medium text-emerald-700 hover:text-emerald-800"
+            >
+              Source
+            </a>
             <div class="text-xs text-gray-500"># Ingrédients : {{ dishDisplayedCount(d) }}</div>
           </div>
           <div class="flex gap-2">
@@ -438,12 +501,27 @@ onMounted(() => {
               @click="cancelEdit"
               >Annuler</BaseButton
             >
-            <BaseButton class="!h-9 !px-3 !rounded-lg" :disabled="!editName.trim()" @click="saveEdit">Enregistrer</BaseButton>
+            <BaseButton
+              class="!h-9 !px-3 !rounded-lg"
+              :disabled="!editName.trim() || !!editSourceUrlError"
+              @click="saveEdit"
+              >Enregistrer</BaseButton
+            >
           </div>
         </div>
 
         <div class="mb-3">
           <BaseInput label="Nom du plat" v-model="editName" placeholder="ex: Pâtes bolognaise" />
+        </div>
+
+        <div class="mb-3">
+          <BaseInput
+            label="Lien recette"
+            type="url"
+            v-model="editSourceUrl"
+            placeholder="https://..."
+            :error="editSourceUrlError ?? undefined"
+          />
         </div>
 
         <div
@@ -563,6 +641,7 @@ onMounted(() => {
       <DataTable :loading="dishes.loading">
         <template #head>
           <th class="p-3 bg-gray-50 text-left text-gray-700 font-medium">Nom</th>
+          <th class="p-3 bg-gray-50 text-left text-gray-700 font-medium">Source</th>
           <th class="p-3 bg-gray-50 text-left text-gray-700 font-medium"># Ingrédients</th>
           <th class="p-3 bg-gray-50 text-right text-gray-700 font-medium">Actions</th>
         </template>
@@ -573,6 +652,18 @@ onMounted(() => {
             :class="flashSet[d.id] ? 'row-flash' : ''"
           >
             <td class="p-3 font-medium align-middle">{{ d.name }}</td>
+            <td class="p-3 align-middle">
+              <a
+                v-if="dishSourceHref(d)"
+                :href="dishSourceHref(d) ?? undefined"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-sm font-medium text-emerald-700 hover:text-emerald-800"
+              >
+                Ouvrir
+              </a>
+              <span v-else class="text-sm text-gray-400">-</span>
+            </td>
             <td class="p-3 align-middle">{{ dishDisplayedCount(d) }}</td>
             <td class="p-3 text-right space-x-2 whitespace-nowrap align-middle">
               <BaseButton class="!h-9 !px-3 !rounded-lg" @click="startEdit(d)">Modifier</BaseButton>
@@ -583,7 +674,7 @@ onMounted(() => {
           </tr>
 
         <tr v-if="editingDishId === d.id" class="border-t">
-          <td colspan="3" class="p-0">
+          <td colspan="4" class="p-0">
             <div class="bg-gray-50 p-3" ref="editSectionRef">
               <div class="flex items-center justify-between mb-3">
                 <div class="font-medium">Éditer le plat</div>
@@ -593,14 +684,24 @@ onMounted(() => {
                     @click="cancelEdit"
                     >Annuler</BaseButton
                   >
-                  <BaseButton class="!h-9 !px-3 !rounded-lg" :disabled="!editName.trim()" @click="saveEdit"
+                  <BaseButton
+                    class="!h-9 !px-3 !rounded-lg"
+                    :disabled="!editName.trim() || !!editSourceUrlError"
+                    @click="saveEdit"
                     >Enregistrer</BaseButton
                   >
                 </div>
               </div>
 
-              <div class="mb-3 max-w-md">
+              <div class="mb-3 grid gap-3 md:grid-cols-2">
                 <BaseInput label="Nom du plat" v-model="editName" placeholder="ex: Pâtes bolognaise" />
+                <BaseInput
+                  label="Lien recette"
+                  type="url"
+                  v-model="editSourceUrl"
+                  placeholder="https://..."
+                  :error="editSourceUrlError ?? undefined"
+                />
               </div>
 
               <div
@@ -702,7 +803,7 @@ onMounted(() => {
         </template>
 
         <tr v-if="!filteredDishes.length && !dishes.loading">
-          <td colspan="3" class="p-4 text-sm text-gray-500">Aucun plat trouve</td>
+          <td colspan="4" class="p-4 text-sm text-gray-500">Aucun plat trouve</td>
         </tr>
       </DataTable>
     </div>

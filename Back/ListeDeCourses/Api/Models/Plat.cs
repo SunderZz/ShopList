@@ -19,6 +19,11 @@ public class Plat
     [BsonIgnoreIfNull]
     public string? NameKey { get; set; }
 
+    [MaxLength(2048)]
+    [BsonElement("sourceUrl")]
+    [BsonIgnoreIfNull]
+    public string? SourceUrl { get; set; }
+
     [Required]
     [BsonElement("ingredients")]
     public List<PlatIngredient> Ingredients { get; set; } = new();

@@ -31,6 +31,11 @@ public class PlatCreateDtoValidator : AbstractValidator<PlatCreateDto>
             .NotEmpty()
             .Length(NameMin, NameMax);
 
+        RuleFor(x => x.SourceUrl)
+            .MaximumLength(SourceUrlMax)
+            .Must(BeHttpOrHttpsUrl)
+            .WithMessage("SourceUrl must be an HTTP or HTTPS URL without credentials.");
+
         RuleFor(x => x.Ingredients)
             .NotNull()
             .NotEmpty();
@@ -48,6 +53,14 @@ public class PlatUpdateDtoValidator : AbstractValidator<PlatUpdateDto>
         {
             RuleFor(x => x.Name!)
                 .Length(NameMin, NameMax);
+        });
+
+        When(x => x.SourceUrl is not null, () =>
+        {
+            RuleFor(x => x.SourceUrl)
+                .MaximumLength(SourceUrlMax)
+                .Must(BeHttpOrHttpsUrl)
+                .WithMessage("SourceUrl must be an HTTP or HTTPS URL without credentials.");
         });
 
         When(x => x.Ingredients is not null, () =>
