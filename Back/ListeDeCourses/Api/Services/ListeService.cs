@@ -250,16 +250,29 @@ public class ListeService
         CancellationToken ct)
     {
         var acc = new Dictionary<string, AggregatedListItem>(StringComparer.Ordinal);
+        var distinctDishIds = (dishIds ?? new())
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
 
-        foreach (var dishId in (dishIds ?? new()).Distinct())
+        if (distinctDishIds.Count == 0) return acc;
+
+        var dishes = await _plats.GetByIdsAsync(distinctDishIds, ct);
+        var ingredientIds = dishes
+            .SelectMany(dish => dish.Ingredients)
+            .Select(ingredient => ingredient.IngredientId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.Ordinal);
+        var ingredientsById = (await _ingredients.GetByIdsAsync(
+            ingredientIds,
+            ct))
+            .ToDictionary(ingredient => ingredient.Id, StringComparer.Ordinal);
+
+        foreach (var dish in dishes)
         {
-            var dish = await _plats.GetByIdAsync(dishId, ct);
-            if (dish is null) continue;
-
             foreach (var dishIngredient in dish.Ingredients)
             {
-                var ingredient = await _ingredients.GetByIdAsync(dishIngredient.IngredientId, ct);
-                if (ingredient is null) continue;
+                if (!ingredientsById.TryGetValue(dishIngredient.IngredientId, out var ingredient)) continue;
 
                 var aggregate = GetOrCreateAggregate(acc, dishIngredient.IngredientId, ingredient.Name, ingredient.Aisle);
                 AddQuantity(aggregate, dishIngredient.Quantity, dishIngredient.Unit);
@@ -274,9 +287,17 @@ public class ListeService
         List<ListeItem> manual,
         CancellationToken ct)
     {
+        var ingredientsById = (await _ingredients.GetByIdsAsync(
+            manual
+                .Select(manualItem => manualItem.IngredientId)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct(StringComparer.Ordinal),
+            ct))
+            .ToDictionary(ingredient => ingredient.Id, StringComparer.Ordinal);
+
         foreach (var manualItem in manual)
         {
-            var ingredient = await _ingredients.GetByIdAsync(manualItem.IngredientId, ct);
+            ingredientsById.TryGetValue(manualItem.IngredientId, out var ingredient);
 
             var manualName = ingredient?.Name ?? manualItem.IngredientName;
             var manualAisle = ingredient?.Aisle ?? manualItem.Aisle;
