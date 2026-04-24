@@ -51,10 +51,9 @@ function ownerLabel(ownerId: string) {
 }
 
 onMounted(() => {
-  lists.fetchAll()
-  dishes.fetchAll()
-  ingredients.fetchAll()
-  if (isAdmin.value && !users.items.length) users.fetchAll()
+  const tasks = [lists.ensureLoaded(), dishes.ensureLoaded(), ingredients.ensureLoaded()]
+  if (isAdmin.value) tasks.push(users.ensureLoaded())
+  void Promise.all(tasks)
 })
 
 const dishOptions = computed<Dish[]>(() => dishes.items)

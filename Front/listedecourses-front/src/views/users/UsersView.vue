@@ -26,7 +26,7 @@ const editForm = ref<{ email: string; pseudo: string; isSuperUser: boolean }>({
 const { flashSet, flashRow } = useFlash()
 
 onMounted(() => {
-  users.fetchAll()
+  void users.ensureLoaded()
 })
 
 async function createUser() {

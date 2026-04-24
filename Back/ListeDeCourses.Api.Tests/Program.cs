@@ -26,6 +26,7 @@ public static class Program
             ("compatible units are converted before shopping list aggregation", CompatibleUnitsAreConvertedBeforeShoppingListAggregation),
             ("incompatible units stay explicit in shopping list aggregation", IncompatibleUnitsStayExplicitInShoppingListAggregation),
             ("manual items are preserved separately from dish aggregation", ManualItemsArePreservedSeparatelyFromDishAggregation),
+            ("shopping list materialization batches repository lookups", ShoppingListMaterializationBatchesRepositoryLookups),
         };
 
         var failures = 0;
@@ -261,6 +262,50 @@ public static class Program
         Assert.Equal("g", stored.ManualItems[0].Unit);
     }
 
+    private static async Task ShoppingListMaterializationBatchesRepositoryLookups()
+    {
+        var plats = new CountingPlatRepository(new[]
+        {
+            Dish("dish-1", IngredientRef("ingredient-a", 1, "g"), IngredientRef("ingredient-b", 2, "g"), IngredientRef("ingredient-c", 3, "g")),
+            Dish("dish-2", IngredientRef("ingredient-b", 1, "g"), IngredientRef("ingredient-d", 4, "g")),
+            Dish("dish-3", IngredientRef("ingredient-c", 2, "g"), IngredientRef("ingredient-e", 5, "g")),
+        });
+        var ingredients = new CountingIngredientRepository(new[]
+        {
+            Ingredient("ingredient-a"),
+            Ingredient("ingredient-b"),
+            Ingredient("ingredient-c"),
+            Ingredient("ingredient-d"),
+            Ingredient("ingredient-e"),
+            Ingredient("ingredient-f"),
+        });
+
+        var context = new DefaultHttpContext { User = User("user-a") };
+        var service = new ListeService(
+            new InMemoryListeRepository(Array.Empty<Liste>()),
+            plats,
+            ingredients,
+            new HttpContextAccessor { HttpContext = context });
+
+        var result = await service.CreateAsync(new ListeCreateDto
+        {
+            Name = "batch-check",
+            Date = new DateTime(2026, 4, 22, 0, 0, 0, DateTimeKind.Utc),
+            DishIds = new List<string> { "dish-1", "dish-2", "dish-3" },
+            Items =
+            [
+                new ListeItemDto { IngredientId = "ingredient-b", IngredientName = "ingredient-b", Quantity = 1, Unit = "g" },
+                new ListeItemDto { IngredientId = "ingredient-f", IngredientName = "ingredient-f", Quantity = 2, Unit = "g" },
+            ],
+        });
+
+        Assert.Equal(0, plats.GetByIdCalls);
+        Assert.Equal(1, plats.GetByIdsCalls);
+        Assert.Equal(0, ingredients.GetByIdCalls);
+        Assert.Equal(2, ingredients.GetByIdsCalls);
+        Assert.Equal(6, result.Items.Count);
+    }
+
     private static ListeService CreateService(IEnumerable<Liste> seed, ClaimsPrincipal? principal) =>
         CreateService(new InMemoryListeRepository(seed), principal);
 
@@ -381,6 +426,8 @@ public static class Program
             Aisle = aisle,
         };
 
+    private static Ingredient Ingredient(string id) => Ingredient(id, id, "test");
+
     private static class Assert
     {
         public static void Equal<T>(T expected, T actual)
@@ -470,7 +517,7 @@ public static class Program
             Task.FromResult(_items.Remove(id));
     }
 
-    private sealed class InMemoryPlatRepository : PlatRepository
+    private class InMemoryPlatRepository : PlatRepository
     {
         private readonly Dictionary<string, Plat> _items;
 
@@ -482,9 +529,15 @@ public static class Program
 
         public override Task<Plat?> GetByIdAsync(string id, CancellationToken ct = default) =>
             Task.FromResult(_items.TryGetValue(id, out var item) ? item : null);
+
+        public override Task<List<Plat>> GetByIdsAsync(IEnumerable<string> ids, CancellationToken ct = default) =>
+            Task.FromResult(ids
+                .Where(id => _items.ContainsKey(id))
+                .Select(id => _items[id])
+                .ToList());
     }
 
-    private sealed class InMemoryIngredientRepository : IngredientRepository
+    private class InMemoryIngredientRepository : IngredientRepository
     {
         private readonly Dictionary<string, Ingredient> _items;
 
@@ -496,6 +549,54 @@ public static class Program
 
         public override Task<Ingredient?> GetByIdAsync(string id, CancellationToken ct = default) =>
             Task.FromResult(_items.TryGetValue(id, out var item) ? item : null);
+
+        public override Task<List<Ingredient>> GetByIdsAsync(IEnumerable<string> ids, CancellationToken ct = default) =>
+            Task.FromResult(ids
+                .Where(id => _items.ContainsKey(id))
+                .Select(id => _items[id])
+                .ToList());
+    }
+
+    private sealed class CountingPlatRepository : InMemoryPlatRepository
+    {
+        public int GetByIdCalls { get; private set; }
+        public int GetByIdsCalls { get; private set; }
+
+        public CountingPlatRepository(IEnumerable<Plat> items)
+            : base(items) { }
+
+        public override async Task<Plat?> GetByIdAsync(string id, CancellationToken ct = default)
+        {
+            GetByIdCalls++;
+            return await base.GetByIdAsync(id, ct);
+        }
+
+        public override async Task<List<Plat>> GetByIdsAsync(IEnumerable<string> ids, CancellationToken ct = default)
+        {
+            GetByIdsCalls++;
+            return await base.GetByIdsAsync(ids, ct);
+        }
+    }
+
+    private sealed class CountingIngredientRepository : InMemoryIngredientRepository
+    {
+        public int GetByIdCalls { get; private set; }
+        public int GetByIdsCalls { get; private set; }
+
+        public CountingIngredientRepository(IEnumerable<Ingredient> items)
+            : base(items) { }
+
+        public override async Task<Ingredient?> GetByIdAsync(string id, CancellationToken ct = default)
+        {
+            GetByIdCalls++;
+            return await base.GetByIdAsync(id, ct);
+        }
+
+        public override async Task<List<Ingredient>> GetByIdsAsync(IEnumerable<string> ids, CancellationToken ct = default)
+        {
+            GetByIdsCalls++;
+            return await base.GetByIdsAsync(ids, ct);
+        }
     }
 
     private static class DummyMongo

@@ -4,7 +4,7 @@ Ce document découpe le travail en jalons courts. Chaque sprint doit produire un
 
 ## Avancement global
 
-Avancement: `36/62 tâches - 58%`
+Avancement: `37/62 tâches - 60%`
 
 Une tâche cochée compte comme terminée uniquement si elle est implémentée, relue et vérifiée. Les critères d'acceptation servent à valider le sprint, mais ne sont pas comptés comme tâches.
 
@@ -217,16 +217,22 @@ Avancement: `0/10 tâches - 0%`
 
 Objectif: solidifier les fondations sans changer inutilement le produit.
 
-Avancement: `0/6 tâches - 0%`
+Avancement: `1/6 tâches - 17%`
 
 ### Tâches
 
 - [ ] Remplacer les `GetAllAsync()` puis filtrages mémoire par des queries Mongo ciblées.
 - [ ] Introduire pagination ou recherche pour les collections qui peuvent grossir.
-- [ ] Réduire les N+1 queries lors de l'agrégation des listes.
+- [x] Réduire les N+1 queries lors de l'agrégation des listes.
 - [ ] Clarifier les responsabilités repositories/services.
 - [ ] Unifier les réponses d'erreur API.
 - [ ] Ajouter tests unitaires et tests d'intégration sur les règles métier.
+
+### Notes de vérification
+
+- L'agrégation des listes utilise désormais des lectures groupées `GetByIdsAsync` pour les plats et ingrédients.
+- Un test back vérifie que la matérialisation d'une liste n'appelle plus les lookups unitaires lors de l'agrégation.
+- Les stores front évitent les chargements redondants avec `ensureLoaded()` et sont vidés lors d'un changement de session.
 
 ### Critères d'acceptation
 

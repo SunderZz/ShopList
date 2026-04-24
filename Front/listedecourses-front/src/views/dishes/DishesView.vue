@@ -307,8 +307,7 @@ function dishDisplayedCount(d: Dish) {
 }
 
 onMounted(() => {
-  dishes.fetchAll()
-  ingredients.fetchAll()
+  void Promise.all([dishes.ensureLoaded(), ingredients.ensureLoaded()])
 })
 </script>
 

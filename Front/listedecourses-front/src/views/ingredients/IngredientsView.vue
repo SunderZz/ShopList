@@ -45,7 +45,7 @@ const createNameAlreadyExists = computed(() => {
 })
 
 onMounted(() => {
-  store.fetchAll()
+  void store.ensureLoaded()
 })
 
 async function createItem() {

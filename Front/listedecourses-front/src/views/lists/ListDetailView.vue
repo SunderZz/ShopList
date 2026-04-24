@@ -80,9 +80,11 @@ function onGlobalClickCapture(ev: Event) {
 
 onMounted(async () => {
   if (!current.value) await lists.fetchById(id)
-  if (!dishes.items.length) await dishes.fetchAll()
-  if (!ingredients.items.length) await ingredients.fetchAll()
-  if (isAdmin.value && !users.items.length) await users.fetchAll()
+  await Promise.all([
+    dishes.ensureLoaded(),
+    ingredients.ensureLoaded(),
+    ...(isAdmin.value ? [users.ensureLoaded()] : []),
+  ])
   window.addEventListener('beforeunload', handleBeforeUnload)
   document.addEventListener('click', onGlobalClickCapture, true)
   syncFromCurrent()

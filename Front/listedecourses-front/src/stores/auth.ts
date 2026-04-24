@@ -4,6 +4,10 @@ import { api } from '@/api/axios'
 import { endpoints } from '@/api/endpoints'
 import type { LoginRequest, LoginResponse, RegisterRequest, User } from '@/api/types'
 import { isExpired, getExpiryMs } from '@/api/jwt'
+import { useDishesStore } from '@/stores/dishes'
+import { useIngredientsStore } from '@/stores/ingredients'
+import { useListsStore } from '@/stores/lists'
+import { useUsersStore } from '@/stores/users'
 
 const TOKEN_KEY = 'ldc_token'
 let logoutTimer: number | null = null
@@ -21,6 +25,13 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(null)
   const profile = ref<User | null>(null)
   const isAuthenticated = computed(() => !!token.value && !isExpired(token.value))
+
+  function clearDomainStores() {
+    useListsStore().clear()
+    useDishesStore().clear()
+    useIngredientsStore().clear()
+    useUsersStore().clear()
+  }
 
   function clearLogoutTimer() {
     if (logoutTimer !== null) {
@@ -81,6 +92,7 @@ export const useAuthStore = defineStore('auth', () => {
     const { data } = await api.post<LoginResponse>(endpoints.auth.login, payload)
     setToken(data.token)
     profile.value = data.user
+    clearDomainStores()
   }
 
   async function register(payload: RegisterRequest) {
@@ -92,6 +104,7 @@ export const useAuthStore = defineStore('auth', () => {
   function logout(opts: { reload?: boolean } = {}) {
     setToken(null)
     profile.value = null
+    clearDomainStores()
     if (opts.reload) safeReloadOnce('auth-expired')
   }
 

@@ -16,34 +16,65 @@ export function createCrudStore<T extends WithId>(name: string, baseUrl: string)
   return defineStore(name, () => {
     const items = shallowRef<T[]>([])       
     const loading = shallowRef(false)
+    const hasLoaded = shallowRef(false)
+    let loadPromise: Promise<void> | null = null
+    let loadVersion = 0
 
     async function fetchAll() {
+      if (loadPromise) return loadPromise
+
       loading.value = true
-      try {
-        const { data } = await api.get<T[]>(baseUrl)
-        items.value = data
-      } finally {
-        loading.value = false
-      }
+      const currentVersion = ++loadVersion
+      loadPromise = (async () => {
+        try {
+          const { data } = await api.get<T[]>(baseUrl)
+          if (currentVersion !== loadVersion) return
+          items.value = data
+          hasLoaded.value = true
+        } finally {
+          if (currentVersion === loadVersion) {
+            loading.value = false
+            loadPromise = null
+          }
+        }
+      })()
+
+      return loadPromise
+    }
+
+    async function ensureLoaded() {
+      if (hasLoaded.value) return
+      await fetchAll()
     }
 
     async function createOne(payload: CreatePayload<T>) {
       const { data } = await api.post<T>(baseUrl, payload)
       items.value = [...items.value, data]
+      hasLoaded.value = true
       return data
     }
 
     async function updateOne(id: string, patch: UpdatePayload<T>) {
       const { data } = await api.put<T>(`${baseUrl}/${id}`, patch)
       items.value = upsertById(items.value, data)    
+      hasLoaded.value = true
       return data
     }
 
     async function deleteOne(id: string) {
       await api.delete(`${baseUrl}/${id}`)
       items.value = removeById(items.value, id)
+      hasLoaded.value = true
     }
 
-    return { items, loading, fetchAll, createOne, updateOne, deleteOne }
+    function clear() {
+      loadVersion++
+      items.value = []
+      loading.value = false
+      hasLoaded.value = false
+      loadPromise = null
+    }
+
+    return { items, loading, fetchAll, ensureLoaded, createOne, updateOne, deleteOne, clear }
   })
 }

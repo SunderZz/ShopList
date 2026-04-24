@@ -18,6 +18,21 @@ namespace ListeDeCourses.Api.Repositories
         public virtual Task<List<T>> GetAllAsync(CancellationToken ct = default) =>
             _collection.Find(_ => true).ToListAsync(ct);
 
+        public virtual Task<List<T>> GetByIdsAsync(IEnumerable<string> ids, CancellationToken ct = default)
+        {
+            ArgumentNullException.ThrowIfNull(ids);
+
+            var filters = ids
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct(StringComparer.Ordinal)
+                .Select(BuildIdFilter)
+                .ToList();
+
+            if (filters.Count == 0) return Task.FromResult(new List<T>());
+
+            return _collection.Find(Builders<T>.Filter.Or(filters)).ToListAsync(ct);
+        }
+
         public virtual async Task<T?> GetByIdAsync(string id, CancellationToken ct = default)
         {
             var filter = BuildIdFilter(id);
